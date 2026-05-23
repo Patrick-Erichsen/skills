@@ -1,0 +1,4 @@
+interface:
+  display_name: "Linear Agent Project Planning"
+  short_description: "Plan Linear queues for agent runs."
+  default_prompt: "Use $linear-agent-project-planning to turn this project idea into a Linear root issue and executable task queue."

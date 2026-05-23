@@ -1,0 +1,4 @@
+interface:
+  display_name: "Linear Goal Runner"
+  short_description: "Run Linear task queues to completion."
+  default_prompt: "Use $linear-goal-runner to continue this Linear root issue until every child issue is terminal and PRs are green."
