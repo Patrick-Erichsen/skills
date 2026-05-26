@@ -5,11 +5,13 @@ description: Use when planning large agent-run projects that should become a Lin
 
 # Linear Agent Project Planning
 
-Turn a broad project idea into a Linear root issue plus ordered child issues that a long-running agent can execute. Optimize for self-contained plans, durable task queues, explicit verification, and clear handoff to `linear-goal-runner`.
+Turn a broad project idea into a reviewable Linear root issue first, then into ordered child issues after the root plan is approved. Optimize for self-contained plans, durable task queues, explicit verification, and clear handoff to `linear-goal-runner`.
 
 ## Core Rule
 
 Plan big enough to matter. Prefer work that would take a strong engineer days or weeks, then split it into coherent child issues that can be verified independently. Do not turn every file edit into a separate issue.
+
+The root Linear issue is the first review artifact. Create it before child/subissues, get user feedback on that root issue, and split into child issues only after the root plan is approved.
 
 ## Workflow
 
@@ -19,21 +21,27 @@ Plan big enough to matter. Prefer work that would take a strong engineer days or
 2. Clarify only high-impact unknowns.
    - Ask about success criteria, scope boundaries, risk tolerance, and final review-ready definition.
    - Avoid questions that repo or Linear exploration can answer.
-3. Draft the root plan.
-   - Include the outcome, current state, approach, major tradeoffs, out-of-scope items, verification strategy, and final completion criteria.
-   - Make interface-level decisions explicit enough that the implementer does not need to invent policy.
-4. Draft child issues.
+3. Create the root issue right away.
+   - Use the `linear` skill/tooling.
+   - Create one root Linear issue containing the draft plan, even if child issues are not ready yet.
+   - Make the issue title and first body clearly reviewable: outcome, current state, proposed approach, major tradeoffs, open questions, verification strategy, and final completion criteria.
+   - Do not create child/subissues yet.
+4. Run the root-issue review loop.
+   - Share the Linear root issue link and a concise summary with the user.
+   - Ask the user to review the root issue and give feedback there or in chat.
+   - Apply feedback by updating the root issue and recording important decisions or scope changes in Linear comments.
+   - Continue until the user explicitly approves the root plan as complete enough to split.
+5. Flesh out child issues only after root approval.
+   - Treat the approved root issue as the source of truth.
    - Group work into milestones and vertical slices.
    - Mark ordering, dependencies, and whether each issue can run in parallel with other issues via subagents.
    - Include what to do, how to verify, and what proof notes are required before terminal status.
-5. Present the draft to the user.
-   - Show the root plan summary and child issue list before creating Linear issues, unless the user explicitly asked to publish immediately.
-   - Revise until the queue is approved.
-6. Publish to Linear.
-   - Use the `linear` skill/tooling.
-   - Create one root issue containing the plan.
    - Create child/subissues linked to the root. Use Linear's native parent/subissue relation when available; otherwise put `Parent: <root issue key/url>` in each child and comment on the root with the child list.
    - Put child issues in dependency order.
+   - Update the root issue with the final child list, milestone ordering, dependency map, and any remaining runner notes.
+6. Handoff to execution.
+   - Share the root issue link, child issue list, and any known open risks.
+   - Tell the user to run `$linear-goal-runner` against the approved root issue when ready.
 
 ## Root Issue Template
 
@@ -43,6 +51,9 @@ Plan big enough to matter. Prefer work that would take a strong engineer days or
 
 ## Current State
 <What exists now, with concrete repo/runtime references when useful.>
+
+## Planning Status
+Draft root issue for user review. Do not create child/subissues until this root issue is approved. Replace this with the approval decision before splitting.
 
 ## Plan
 <Implementation approach, key interfaces/contracts, and sequencing.>
