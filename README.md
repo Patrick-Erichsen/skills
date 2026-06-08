@@ -1,4 +1,4 @@
-# Patrick Erichsen Skills
+# My personal agent skills
 
 Public global agent skills I maintain and use across projects in my day-to-day
 work.
