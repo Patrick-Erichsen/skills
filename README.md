@@ -22,4 +22,4 @@ Validate skills with `scripts/validate-skills`, which wraps the official
 
 ### Tools
 
-- [`agent-revision-history`](skills/agent-revision-history): Generate a JSON edit history for a Markdown or MDX document from an agent session transcript. I use this in my personal blog to render my edit history to show to what extent I polished an originally AI generated piece of content.
+- [`agent-revision-history`](skills/agent-revision-history): Generate a JSON edit history for a Markdown or MDX document from an agent session transcript. I use this in my personal blog to render my edit history to show to what extent I polished an originally AI generated piece of content. Includes optional Shadcn style UI component to render the revisions.
