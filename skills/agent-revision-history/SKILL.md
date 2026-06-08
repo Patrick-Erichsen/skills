@@ -1,6 +1,6 @@
 ---
 name: agent-revision-history
-description: Generate a public JSON edit history for a Markdown or MDX document from an agent session transcript, including document snapshots, diffs, generic edit summaries, and an optional live Codex CLI canary.
+description: Generate a public JSON edit history for a Markdown or MDX document from an agent session transcript, including document snapshots, diffs, generic edit summaries, an optional shadcn-style React UI starter, and an optional live Codex CLI canary.
 ---
 
 # Agent Revision History
