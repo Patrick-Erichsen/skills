@@ -1,0 +1,4 @@
+{"id":"msg-1","timestamp":"2026-06-07T20:00:00.000Z","role":"user","content":"make the title more specific"}
+{"id":"call-1","timestamp":"2026-06-07T20:00:10.000Z","type":"function_call","name":"functions.apply_patch","arguments":"*** Begin Patch\n*** Update File: /workspace/example.mdx\n@@\n-title: Old\n+title: New\n*** End Patch"}
+{"id":"msg-2","timestamp":"2026-06-07T20:01:00.000Z","role":"user","content":"add a note"}
+{"id":"call-2","timestamp":"2026-06-07T20:01:10.000Z","type":"function_call","name":"functions.apply_patch","arguments":"*** Begin Patch\n*** Update File: /workspace/example.mdx\n@@\n Hello.\n+\n+Note.\n*** End Patch"}
