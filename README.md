@@ -6,6 +6,8 @@ work.
 The layout follows the agent-skills convention: each skill lives in
 `skills/<name>/` and has a required `SKILL.md`.
 
+This repo is maintained directly on `main` for small skill updates.
+
 ## Skills
 
 ### Utils
