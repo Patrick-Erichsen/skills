@@ -6,6 +6,9 @@ work.
 The layout follows the agent-skills convention: each skill lives in
 `skills/<name>/` and has a required `SKILL.md`.
 
+Validate skills with `scripts/validate-skills`, which wraps the official
+`skills-ref validate` command from `agentskills/agentskills`.
+
 ## Skills
 
 ### Utils
