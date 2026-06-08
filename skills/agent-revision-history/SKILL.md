@@ -40,6 +40,18 @@ RUN_AGENT_REVISION_CODEX_LIVE_TEST=1 npm exec -- tsx --test <skill-dir>/scripts/
 
 The canary creates a temporary `CODEX_HOME`, runs one deterministic Codex edit, and verifies that current Codex JSONL `file_change` events still parse correctly.
 
+## Optional UI
+
+If the host app wants a starter UI, copy `assets/shadcn/revision-history.tsx`
+into the app's component directory, shadcn-style.
+
+Treat it as app-owned code:
+
+- adapt imports to the app's local UI primitives
+- wire data however the app already loads data
+- move styling into the app's existing style system
+- keep the generated JSON schema as the component contract
+
 ## Public Artifact Rules
 
 - Always strip local path prefixes.
