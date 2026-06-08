@@ -1,0 +1,17 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "tsx --test scripts/revision-history.test.ts && node --test scripts/bin-smoke.test.mjs",
+    "test:live": "RUN_AGENT_REVISION_CODEX_LIVE_TEST=1 tsx --test scripts/codex-live.test.ts"
+  },
+  "dependencies": {
+    "diff": "9.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.0",
+    "tsx": "4.22.4",
+    "typescript": "6.0.3"
+  }
+}

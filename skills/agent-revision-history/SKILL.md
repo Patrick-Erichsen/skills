@@ -14,7 +14,7 @@ Use when asked to turn an agent chat/session transcript plus a Markdown or MDX d
 3. Generate the artifact:
 
 ```sh
-npm exec -- tsx <skill-dir>/scripts/cli.ts -- \
+node <skill-dir>/bin/agent-revision-history.mjs \
   --transcript <session.jsonl> \
   --document <post.mdx> \
   --output <revision-history.json> \
@@ -24,18 +24,22 @@ npm exec -- tsx <skill-dir>/scripts/cli.ts -- \
 4. Verify the generated JSON:
 
 ```sh
-npm exec -- tsx --test <skill-dir>/scripts/revision-history.test.ts
 rg -n "/Users/|rollout-|OPENAI_API_KEY|session:[0-9a-f-]" <revision-history.json>
 ```
 
 The `rg` command should return no public-safety leaks.
+
+The runtime script is a committed bundle, so consumers only need Node. The
+source TypeScript, `package.json`, and `package-lock.json` are maintainer inputs;
+after parser changes, run `npm install && npm run build && npm test` in this
+skill directory and commit the regenerated `bin/agent-revision-history.mjs`.
 
 ## Optional Live Canary
 
 Run only when the user approves a network/model call and `OPENAI_API_KEY` is available:
 
 ```sh
-RUN_AGENT_REVISION_CODEX_LIVE_TEST=1 npm exec -- tsx --test <skill-dir>/scripts/codex-live.test.ts
+cd <skill-dir> && npm run test:live
 ```
 
 The canary creates a temporary `CODEX_HOME`, runs one deterministic Codex edit, and verifies that current Codex JSONL `file_change` events still parse correctly.
