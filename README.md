@@ -22,4 +22,4 @@ Validate skills with `scripts/validate-skills`, which wraps the official
 
 ### Tools
 
-- `agent-revision-history`: Generate a public JSON edit history for a Markdown or MDX document from an agent session transcript, including document snapshots, diffs, generic edit summaries, and an optional live Codex CLI canary.
+- `agent-revision-history`: Generate a JSON edit history for a Markdown or MDX document from an agent session transcript. I use this in my personal blog to render my edit history to show to what extent I polished an originally AI generated piece of content.
