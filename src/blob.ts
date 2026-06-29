@@ -10,6 +10,7 @@
  *   3. skills.sh/api/download → fetch full file contents from cached blob
  */
 
+import { createHash } from 'node:crypto';
 import { parseFrontmatter } from './frontmatter.ts';
 import { sanitizeMetadata } from './sanitize.ts';
 import type { Skill } from './types.ts';
@@ -42,6 +43,14 @@ export interface BlobSkill extends Skill {
 // ─── Constants ───
 
 const DOWNLOAD_BASE_URL = process.env.SKILLS_DOWNLOAD_URL || 'https://skills.sh';
+
+// Repos that self-host their downloads on the blob fast-path
+export const BLOB_ALLOWED_REPOS: Record<string, { downloadUrl: (slug: string) => string }> = {
+  'zapier/connectors': {
+    downloadUrl: (slug) =>
+      `https://connectors-skills.zapier.com/download/${encodeURIComponent(slug)}/snapshot.json`,
+  },
+};
 
 /** Timeout for individual HTTP fetches (ms) */
 const FETCH_TIMEOUT = 10_000;
@@ -271,12 +280,20 @@ export function findSkillMdPaths(tree: RepoTree, subpath?: string): string[] {
 
   if (filtered.length === 0) return [];
 
-  // Check priority directories first (same order as discoverSkills)
+  // Check priority directories first (same order as discoverSkills).
+  // Non-root prefixes also accept depth-2 paths so the blob fast path stays
+  // in sync with the on-disk walk's catalog-layout discovery.
   const priorityResults: string[] = [];
   const seen = new Set<string>();
+  // Mirror of SKIP_DIRS at the top of src/skills.ts. Kept local to avoid
+  // a cross-file import; if these ever drift, update both.
+  const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '__pycache__']);
+  const lowerSkillMdSet = new Set(filtered.map((p) => p.toLowerCase()));
 
   for (const priorityPrefix of PRIORITY_PREFIXES) {
     const fullPrefix = prefix + priorityPrefix;
+    const isContainer = priorityPrefix !== '';
+
     for (const skillMd of filtered) {
       // Check if this SKILL.md is directly inside the priority dir (one level deep)
       if (!skillMd.startsWith(fullPrefix)) continue;
@@ -295,6 +312,25 @@ export function findSkillMdPaths(tree: RepoTree, subpath?: string): string[] {
       const parts = rest.split('/');
       if (parts.length === 2 && parts[1]!.toLowerCase() === 'skill.md') {
         if (!seen.has(skillMd)) {
+          priorityResults.push(skillMd);
+          seen.add(skillMd);
+        }
+        continue;
+      }
+
+      // SKILL.md two levels deep under a known container prefix
+      // (e.g., "skills/<category>/<skill>/SKILL.md"). Skip if the parent
+      // child dir already has its own SKILL.md (no descent past), or if
+      // any path segment is an ignored directory.
+      if (
+        isContainer &&
+        parts.length === 3 &&
+        parts[2]!.toLowerCase() === 'skill.md' &&
+        !SKIP_DIRS.has(parts[0]!) &&
+        !SKIP_DIRS.has(parts[1]!)
+      ) {
+        const parentSkillMd = `${fullPrefix}${parts[0]}/SKILL.md`.toLowerCase();
+        if (!lowerSkillMdSet.has(parentSkillMd) && !seen.has(skillMd)) {
           priorityResults.push(skillMd);
           seen.add(skillMd);
         }
@@ -345,7 +381,10 @@ async function fetchSkillDownload(
 ): Promise<SkillDownloadResponse | null> {
   try {
     const [owner, repo] = source.split('/');
-    const url = `${DOWNLOAD_BASE_URL}/api/download/${encodeURIComponent(owner!)}/${encodeURIComponent(repo!)}/${encodeURIComponent(slug)}`;
+    const defaultUrl = `${DOWNLOAD_BASE_URL}/api/download/${encodeURIComponent(owner!)}/${encodeURIComponent(repo!)}/${encodeURIComponent(slug)}`;
+    // Self-hosted repos build their own URL; otherwise fall back to the default.
+    const selfHosted = BLOB_ALLOWED_REPOS[source.toLowerCase()]?.downloadUrl(slug);
+    const url = selfHosted ?? defaultUrl;
     const response = await fetch(url, {
       signal: AbortSignal.timeout(FETCH_TIMEOUT),
     });
@@ -361,6 +400,15 @@ async function fetchSkillDownload(
 export interface BlobInstallResult {
   skills: BlobSkill[];
   tree: RepoTree;
+}
+
+function computeSnapshotHash(files: SkillSnapshotFile[]): string {
+  const hash = createHash('sha256');
+  for (const file of [...files].sort((a, b) => a.path.localeCompare(b.path))) {
+    hash.update(file.path);
+    hash.update(file.contents);
+  }
+  return hash.digest('hex');
 }
 
 /**
@@ -492,6 +540,16 @@ export async function tryBlobInstall(
         ? ''
         : skill.mdPath.slice(0, -(1 + 'SKILL.md'.length));
 
+    // A root-level SKILL.md means the repository root is a skill entrypoint,
+    // not that the entire repository is installable skill payload. Some cached
+    // snapshots for root skills contain every repo file; installing those can
+    // dump thousands of unrelated files into .agents/skills/<name>. Keep root
+    // skills to their SKILL.md unless/until the skill spec gains an explicit
+    // include list for supporting files.
+    const files = folderPath
+      ? download!.files
+      : download!.files.filter((file) => file.path.toLowerCase() === 'skill.md');
+
     return {
       name: skill.name,
       description: skill.description,
@@ -500,8 +558,9 @@ export async function tryBlobInstall(
       path: '',
       rawContent: skill.content,
       metadata: skill.metadata,
-      files: download!.files,
-      snapshotHash: download!.hash,
+      files,
+      snapshotHash:
+        files.length === download!.files.length ? download!.hash : computeSnapshotHash(files),
       repoPath: skill.mdPath,
     };
   });
