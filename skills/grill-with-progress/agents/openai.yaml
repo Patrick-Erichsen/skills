@@ -1,0 +1,4 @@
+interface:
+  display_name: "Grill with Progress"
+  short_description: "Track grilling questions and visible progress"
+  default_prompt: "Use $grill-with-progress to stress-test this plan with a tracked question checklist and visible progress."

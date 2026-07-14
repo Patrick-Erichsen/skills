@@ -11,6 +11,10 @@ work.
 - [`clawhub-review-sweep`](skills/clawhub-review-sweep): Review and durably track every open ClawHub issue and pull request in a private approval-gated ledger.
 - [`openclaw-pr-batch-sweep`](skills/openclaw-pr-batch-sweep): Select, review, repair, validate, and land bounded OpenClaw contributor PR batches with durable cross-run state.
 
+### Planning
+
+- [`grill-with-progress`](skills/grill-with-progress): Run a tracked grill-with-docs session with an anticipated question checklist and visible progress.
+
 ### Utils
 
 - [`html`](skills/html): Choose and create single-file HTML artifacts for visual explanations, plans, reviews, and lightweight tools.
