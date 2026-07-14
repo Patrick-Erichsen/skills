@@ -5,9 +5,11 @@ description: Run Matt Pocock's grill-with-docs workflow with a temporary Markdow
 
 # Grill with Progress
 
-Use the installed `$grill-with-docs` skill as the base workflow. Do not copy,
+Locate and read the installed `grill-with-docs/SKILL.md` at runtime, then follow
+it as the base workflow. Do not rely on implicit skill activation. Do not copy,
 edit, or replace its instructions. Apply the following progress-tracking
-contract in addition to the upstream behavior.
+contract in addition to the upstream behavior. If the upstream skill cannot be
+found, stop and tell the user.
 
 ## Start the Ledger
 
