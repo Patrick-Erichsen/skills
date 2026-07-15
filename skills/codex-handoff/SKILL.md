@@ -1,6 +1,6 @@
 ---
 name: codex-handoff
-description: Continue work in a new persistent Codex thread with parent/child emoji naming, same-checkout delegation, pinning, and verification. Use when the user asks to hand off, delegate, continue in another Codex session or thread, or create a visible receiving thread for ongoing work.
+description: Continue work in a new persistent Codex thread with parent/child emoji naming, permission-aware delegation, pinning, and verification. Use when the user asks to hand off, delegate, continue in another Codex session or thread, or create a visible receiving thread for ongoing work.
 ---
 
 # Codex Handoff
@@ -17,6 +17,8 @@ Identify:
 - any existing handoff document or other transfer artifact supplied by the
   caller
 - the repository, branch, and desired thread environment
+- the effective runtime permission profile, approval policy, and any genuine
+  external action-time confirmation boundaries
 
 ## Workflow
 
@@ -38,6 +40,33 @@ Identify:
 - Tell the receiver when the checkout is shared. Require it to inspect
   `git status` before editing, keep changes scoped, and avoid reverting or
   committing unrelated work.
+
+## Execution Permissions And Confirmations
+
+Preserve the caller's effective execution profile when creating the receiving
+thread. Do not make a full-permission worker behave like a sandboxed worker.
+
+- If the user requested full permissions, or the runtime reports unrestricted
+  filesystem and network access with approval policy `never`, state that
+  explicitly in the receiving prompt.
+- Under that profile, run ordinary shell, Git, GitHub, network, package,
+  build, test, deploy-readiness, and read-only provider commands directly.
+  Do not request sandbox escalation, add `sandbox_permissions:
+  require_escalated`, show an `Allow once` prompt, or pause merely because a
+  command accesses a private repository, the network, or a path outside the
+  checkout.
+- If a normal command fails, inspect the actual error and retry or diagnose it
+  normally. Do not reinterpret a command failure as an approval requirement
+  unless the runtime explicitly reports one.
+- Full runtime permission does not waive mandatory external action-time
+  confirmations. Continue to follow the active tool or platform policy for
+  actions such as creating accounts or persistent credentials, changing
+  permissions, transmitting secrets, spending money or provisioning paid
+  resources, destructive operations, and representational communication.
+- Preserve any stricter confirmation boundary explicitly required by the
+  user's source specification. Do not invent additional confirmation gates.
+- If the effective permission profile is unknown, use the normal command path
+  first. Do not preemptively request escalation.
 
 ## Parent And Receiving Thread Titles
 
@@ -65,9 +94,19 @@ Give the receiving thread:
 - important constraints and non-goals
 - the expected validation and completion evidence
 - an instruction to read repository guidance and re-check live state before edits
+- the effective runtime permission and approval policy, clearly separated from
+  genuine external action-time confirmations
 
 Reference existing artifacts instead of duplicating their contents. Never place
 secrets or credentials in the prompt or handoff document.
+
+For a full-permission receiver, include an instruction equivalent to:
+
+> Use normal commands with the current full filesystem and network access.
+> Do not request sandbox escalation or pause for ordinary shell, Git, GitHub,
+> network, build, test, or read-only provider work. Pause only for genuine
+> external action-time confirmations required by the active policy or source
+> specification.
 
 When the work uses an issue tracker, use the configured tracker adapter for
 issue lookup, comments, status, and proof conventions. Do not make a particular
@@ -82,10 +121,22 @@ Complete the handoff only after verifying:
 - the receiving prompt contains the durable source and any supplied artifact
 - the receiving thread is pinned
 - the receiver has started or accepted the work when readback is available
+- the receiver is not waiting for approval on an ordinary command that should
+  run under its effective permission profile
 
 If thread creation, title management, or pinning is unavailable, produce a
 ready-to-send receiving prompt. State exactly which operation could not be
 completed and do not describe the handoff as fully delegated.
+
+If readback shows `waitingOnApproval`, inspect the reason before reporting
+completion:
+
+- For an ordinary command under full permissions, send a correction requiring
+  the normal non-escalated command path and verify that work resumes.
+- For a genuine external action-time confirmation, report the exact safe action
+  needed without exposing secrets.
+- A receiver stuck on a stale or unnecessary approval is not a completed
+  handoff.
 
 Report any supplied artifact path, receiving thread title and identifier,
 checkout mode, and pin state concisely.
