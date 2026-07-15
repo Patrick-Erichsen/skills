@@ -91,6 +91,7 @@ Give the receiving thread:
 - the durable source of truth with its full reference or URL
 - any supplied handoff document or transfer-artifact path
 - the repository, branch, and checkout-sharing context
+- the spawning or orchestrator thread identifier and return-reporting path
 - important constraints and non-goals
 - the expected validation and completion evidence
 - an instruction to read repository guidance and re-check live state before edits
@@ -112,6 +113,38 @@ When the work uses an issue tracker, use the configured tracker adapter for
 issue lookup, comments, status, and proof conventions. Do not make a particular
 tracker mandatory for otherwise valid handoffs.
 
+## Blocker Reporting
+
+Every receiving prompt must instruct the worker to report blockers directly to
+the spawning or orchestrator thread. Include that thread's identifier in the
+prompt whenever it is available.
+
+- Do not let a blocked worker merely stop, go idle, or mention the blocker only
+  in its own final response.
+- Report a blocker after normal diagnosis and retries show that the worker
+  cannot continue autonomously. Ordinary command failures under full
+  permissions are not blockers until their actual technical cause is known.
+- Send the parent a concise report containing:
+  - the full issue or task reference
+  - the concrete blocker and what was attempted
+  - the exact safe next action or access needed
+  - current branch, commit, deployment, and validation state when relevant
+  - whether any provider objects, credentials, permissions, or live state changed
+- Never include secret values, credential material, sensitive command output,
+  or archive contents in the report.
+- Continue any independent unblocked work after reporting. If no work remains,
+  stay available for a parent response instead of repeatedly prompting the user.
+- If direct thread messaging is unavailable, record the blocker on the durable
+  issue when appropriate and make the structured blocker report the worker's
+  final response so the parent can relay it.
+
+For a receiving worker, include an instruction equivalent to:
+
+> If you become blocked after normal diagnosis, immediately report the concrete
+> blocker to orchestrator thread `<thread-id>`. Include what you tried, the exact
+> non-secret action or access needed, current proof/state, and whether anything
+> changed. Do not ask the user for routine command approval or silently go idle.
+
 ## Completion Gate
 
 Complete the handoff only after verifying:
@@ -119,6 +152,8 @@ Complete the handoff only after verifying:
 - the receiving persistent thread exists
 - source and receiving titles have the same leading emoji
 - the receiving prompt contains the durable source and any supplied artifact
+- the receiving prompt contains the parent return path and blocker-reporting
+  instruction
 - the receiving thread is pinned
 - the receiver has started or accepted the work when readback is available
 - the receiver is not waiting for approval on an ordinary command that should
