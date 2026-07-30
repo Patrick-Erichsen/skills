@@ -17,3 +17,4 @@ work.
 ### Tools
 
 - [`agent-revision-history`](skills/agent-revision-history): Generate a JSON edit history for a Markdown or MDX document from an agent session transcript. I use this in my personal blog to render my edit history to show to what extent I polished an originally AI generated piece of content. Includes optional Shadcn style UI component to render the revisions.
+- [`prototype-tui`](skills/prototype-tui): Build fixture-driven TUI variants and compare them interactively in tmux panes.
