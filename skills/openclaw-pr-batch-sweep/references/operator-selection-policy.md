@@ -18,6 +18,7 @@ Small does not mean automatically good. Cleanup, typo, wording, or mechanical ch
 Reject before assigning an implementation lane unless Patrick explicitly approves the named risk override:
 
 - Draft PRs or current maintainer-authored/labeled queue work.
+- PRs with any existing top-level comment, submitted review, or inline review comment from a human who has live `write`, `maintain`, or `admin` access to `openclaw/openclaw`. Ignore bots and contributor self-comments. Treat an incomplete participation check as an exclusion, not as evidence that the PR is untouched.
 - Explicitly skipped, terminally handled, already rejected, closed, merged, or superseded PRs.
 - Security, SSRF, proxy, outbound request policy, auth, OAuth, token, secret, credential, redaction, permission, sandbox, pairing, trust-boundary, or sensitive-data changes.
 - Config schema/default changes, migrations, legacy compatibility, provider/auth routing, public plugin SDK/API, protocol versioning, release, CI/workflow, dependency, or infrastructure policy.

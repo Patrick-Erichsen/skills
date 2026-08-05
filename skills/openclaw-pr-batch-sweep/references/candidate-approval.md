@@ -6,6 +6,8 @@ Use this gate to separate cheap discovery from substantive review and repair.
 
 Discovery may read public metadata, PR files, labels, checks, mergeability, and existing review summaries. It does not establish whether the patch is correct or best.
 
+Before presenting a candidate, verify that no other human OpenClaw maintainer has participated through a top-level comment, submitted review, or inline review comment. Candidates with prior maintainer participation never reach this approval gate.
+
 For each candidate, present:
 
 - PR link, title, author, exact head SHA, age, and source (`operator` or `discovery`).

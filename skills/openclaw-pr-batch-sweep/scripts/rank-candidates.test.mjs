@@ -26,6 +26,8 @@ function hydratedPr(overrides = {}) {
       { filename: "src/retry.test.ts", additions: 10, deletions: 0 },
     ],
     statusCheckRollup: [],
+    maintainerParticipationChecked: true,
+    maintainerInteractions: [],
     ...overrides,
   };
 }
@@ -88,6 +90,30 @@ test("rejects an unresolved REST merge state even when mergeable is true", () =>
 
   assert.equal(output.selected.length, 0);
   assert.deepEqual(output.rejected[0].reasons, ["unresolved merge state"]);
+});
+
+test("rejects PRs with prior human maintainer participation", () => {
+  const output = runHydrated(
+    hydratedPr({
+      number: 113125,
+      maintainerInteractions: [
+        { login: "steipete", permission: "admin", surfaces: ["issue-comment"] },
+      ],
+    }),
+  );
+
+  assert.equal(output.selected.length, 0);
+  assert.deepEqual(output.rejected[0].reasons, ["prior maintainer participation"]);
+  assert.equal(output.rejected[0].maintainerInteractions[0].login, "steipete");
+});
+
+test("rejects hydrated candidates when maintainer participation was not checked", () => {
+  const pr = hydratedPr();
+  delete pr.maintainerParticipationChecked;
+  const output = runHydrated(pr);
+
+  assert.equal(output.selected.length, 0);
+  assert.deepEqual(output.rejected[0].reasons, ["maintainer participation not checked"]);
 });
 
 test("rejects null REST mergeability even when the state string says clean", () => {

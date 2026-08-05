@@ -68,6 +68,8 @@ if (args[0] === "api" && args[1] === "repos/openclaw/openclaw/pulls/42") {
     deletions: 5,
     changedFiles: 2
   }));
+} else if (args[0] === "api" && (args[1].includes("/comments?") || args[1].includes("/reviews?"))) {
+  console.log("[]");
 } else {
   process.exitCode = 2;
 }
@@ -101,11 +103,14 @@ if (args[0] === "api" && args[1] === "repos/openclaw/openclaw/pulls/42") {
     assert.deepEqual(output[0].statusCheckRollup, []);
 
     const calls = readFileSync(logPath, "utf8").trim().split("\n");
-    assert.equal(calls.length, 4);
+    assert.equal(calls.length, 7);
     assert.equal(calls[0], "api repos/openclaw/openclaw/pulls/42");
     assert.match(calls[1], /files\?per_page=25&page=1/);
     assert.match(calls[2], /^pr view 42 /);
     assert.equal(calls[3], "api repos/openclaw/openclaw/pulls/42");
+    assert.match(calls[4], /issues\/42\/comments\?per_page=25&page=1/);
+    assert.match(calls[5], /pulls\/42\/reviews\?per_page=25&page=1/);
+    assert.match(calls[6], /pulls\/42\/comments\?per_page=25&page=1/);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -168,6 +173,8 @@ if (args[0] === "api" && args[1] === "repos/openclaw/openclaw/pulls/43") {
     deletions: 2,
     changedFiles: 1
   }));
+} else if (args[0] === "api" && (args[1].includes("/comments?") || args[1].includes("/reviews?"))) {
+  console.log("[]");
 } else {
   process.exitCode = 2;
 }
@@ -200,6 +207,105 @@ if (args[0] === "api" && args[1] === "repos/openclaw/openclaw/pulls/43") {
     assert.equal(readFileSync(countPath, "utf8"), "4");
     assert.match(result.stderr, /transient failure; retry 4\/5 in 0ms/);
     assert.match(result.stderr, /hydrate #44 remained unavailable.*continuing/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("captures human maintainer participation across PR comment surfaces", () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "openclaw-hydrate-maintainers-"));
+  const inputPath = path.join(directory, "ranked.json");
+  const fakeGhxPath = path.join(directory, "fake-ghx.mjs");
+
+  writeFileSync(inputPath, JSON.stringify([{ number: 113125 }]));
+  writeFileSync(
+    fakeGhxPath,
+    `#!/usr/bin/env node
+const args = process.argv.slice(2);
+const endpoint = args[1] ?? "";
+if (args[0] === "api" && endpoint === "repos/openclaw/openclaw/pulls/113125") {
+  console.log(JSON.stringify({
+    number: 113125,
+    state: "open",
+    draft: false,
+    author_association: "CONTRIBUTOR",
+    changed_files: 1,
+    mergeable: true,
+    mergeable_state: "clean",
+    user: { login: "contributor" }
+  }));
+} else if (args[0] === "api" && endpoint.includes("/files?")) {
+  console.log(JSON.stringify([{ filename: "src/example.ts", additions: 4, deletions: 2 }]));
+} else if (args[0] === "pr" && args[1] === "view") {
+  console.log(JSON.stringify({
+    number: 113125,
+    state: "OPEN",
+    isDraft: false,
+    url: "https://github.com/openclaw/openclaw/pull/113125",
+    author: { login: "contributor" },
+    labels: [],
+    statusCheckRollup: [],
+    mergeStateStatus: "CLEAN",
+    headRefOid: "abc123",
+    additions: 4,
+    deletions: 2,
+    changedFiles: 1
+  }));
+} else if (args[0] === "api" && endpoint.includes("issues/113125/comments?")) {
+  console.log(JSON.stringify([
+    { user: { login: "clawsweeper[bot]", type: "Bot" }, author_association: "CONTRIBUTOR" },
+    { user: { login: "contributor", type: "User" }, author_association: "NONE" },
+    { user: { login: "steipete", type: "User" }, author_association: "MEMBER" },
+    { user: { login: "triager", type: "User" }, author_association: "COLLABORATOR" }
+  ]));
+} else if (args[0] === "api" && endpoint.includes("pulls/113125/reviews?")) {
+  console.log(JSON.stringify([
+    { user: { login: "steipete", type: "User" }, author_association: "MEMBER" }
+  ]));
+} else if (args[0] === "api" && endpoint.includes("pulls/113125/comments?")) {
+  console.log(JSON.stringify([
+    { user: { login: "steipete", type: "User" }, author_association: "MEMBER" }
+  ]));
+} else if (args[0] === "api" && endpoint.includes("collaborators?affiliation=all")) {
+  console.log(JSON.stringify([
+    {
+      login: "steipete",
+      role_name: "admin",
+      permissions: { admin: true, maintain: true, push: true, triage: true, pull: true }
+    },
+    {
+      login: "triager",
+      role_name: "read",
+      permissions: { admin: false, maintain: false, push: false, triage: true, pull: true }
+    }
+  ]));
+} else {
+  process.exitCode = 2;
+}
+`,
+  );
+  chmodSync(fakeGhxPath, 0o755);
+
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [scriptPath, "--input", inputPath, "--sleep-ms", "0"],
+      {
+        encoding: "utf8",
+        env: { ...process.env, GHX_BIN: fakeGhxPath },
+      },
+    );
+
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output[0].maintainerParticipationChecked, true);
+    assert.deepEqual(output[0].maintainerInteractions, [
+      {
+        login: "steipete",
+        permission: "admin",
+        surfaces: ["inline-comment", "issue-comment", "review"],
+      },
+    ]);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
