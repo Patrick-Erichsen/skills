@@ -75,8 +75,10 @@ let decisionLedgerPath = "";
 let limit = 40;
 let batchSize = 20;
 let requireHydrated = false;
+let proposalMode = false;
 const terminalDecisions = new Map();
 const carriedHeads = new Map();
+const queuedHeads = new Map();
 
 function parsePrNumber(value) {
   const trimmed = value.trim();
@@ -107,9 +109,11 @@ for (let index = 0; index < args.length; index += 1) {
     }
   } else if (arg === "--hydrated") {
     requireHydrated = true;
+  } else if (arg === "--proposal-mode") {
+    proposalMode = true;
   } else if (arg === "--help") {
     console.log(
-      "Usage: rank-candidates.mjs [--input prs.json] [--decision-ledger ledger.json] [--limit 40] [--batch-size 20] [--exclude 123,456] [--hydrated]",
+      "Usage: rank-candidates.mjs [--input prs.json] [--decision-ledger ledger.json] [--limit 40] [--batch-size 20] [--exclude 123,456] [--hydrated] [--proposal-mode]",
     );
     process.exit(0);
   } else {
@@ -165,6 +169,35 @@ if (decisionLedgerPath) {
       throw new Error(`Invalid carried ledger entry: ${JSON.stringify(entry)}`);
     }
     carriedHeads.set(number, headSha.toLowerCase());
+  }
+  const candidateQueue = ledger.candidateQueue ?? [];
+  if (!Array.isArray(candidateQueue)) {
+    throw new Error("Decision ledger field candidateQueue must be an array");
+  }
+  for (const entry of candidateQueue) {
+    if (typeof entry !== "object" || entry === null) {
+      throw new Error("Candidate queue entries must include number, headSha, and status");
+    }
+    const number = parsePrNumber(String(entry.number ?? entry.ref ?? entry.url ?? ""));
+    const headSha = String(entry.headSha ?? entry.head_sha ?? "").trim();
+    const status = String(entry.status ?? "").trim().toLowerCase();
+    if (
+      number === null ||
+      !/^[0-9a-f]{7,40}$/i.test(headSha) ||
+      ![
+        "proposed",
+        "approved",
+        "declined",
+        "deferred",
+        "delegated",
+        "superseded",
+      ].includes(status)
+    ) {
+      throw new Error(`Invalid candidate queue entry: ${JSON.stringify(entry)}`);
+    }
+    if (status !== "superseded") {
+      queuedHeads.set(number, { headSha: headSha.toLowerCase(), status });
+    }
   }
 }
 
@@ -455,6 +488,7 @@ function analyze(pr) {
       : null;
   const fileCount = Number(declaredFileCount ?? paths.length);
   const reasons = [];
+  const warnings = [];
   const author =
     pr.author?.login ?? pr.user?.login ?? pr.author_login ?? pr.author ?? "";
   const normalizedAuthor = String(author).toLowerCase();
@@ -573,6 +607,10 @@ function analyze(pr) {
   if (carriedHead && currentHead && carriedHead === currentHead) {
     reasons.push("previously carried at unchanged head");
   }
+  const queuedHead = queuedHeads.get(Number(pr.number));
+  if (queuedHead && currentHead && queuedHead.headSha === currentHead) {
+    reasons.push(`already ${queuedHead.status} at unchanged head`);
+  }
   if (
     HARD_RISK.test(normalizedTitle) ||
     SENSITIVE_TOKEN.test(normalizedTitle) ||
@@ -622,8 +660,12 @@ function analyze(pr) {
   }
   if (requireHydrated && !fullyHydratedFiles) reasons.push("incomplete file hydration");
   if (requireHydrated && !authorAssociation) reasons.push("missing author association");
-  if (requireHydrated && !hasMergeState) reasons.push("unresolved merge state");
-  if (requireHydrated && !hasCheckRollup) reasons.push("missing check rollup");
+  if (requireHydrated && !hasMergeState) {
+    (proposalMode ? warnings : reasons).push("unresolved merge state");
+  }
+  if (requireHydrated && !hasCheckRollup) {
+    (proposalMode ? warnings : reasons).push("missing check rollup");
+  }
   if (requireHydrated && productionDeltaKnown && productionDelta > 500) {
     reasons.push("production diff above 500 lines");
   }
@@ -639,8 +681,12 @@ function analyze(pr) {
   ) {
     reasons.push("dirty or conflicting");
   }
-  if (failedChecks.length > 0) reasons.push("failing checks");
-  if (pendingChecks.length > 0) reasons.push("pending checks");
+  if (failedChecks.length > 0) {
+    (proposalMode ? warnings : reasons).push("failing checks");
+  }
+  if (pendingChecks.length > 0) {
+    (proposalMode ? warnings : reasons).push("pending checks");
+  }
 
   let score = 0;
   if (
@@ -681,6 +727,8 @@ function analyze(pr) {
   if (/needs proof|waiting on author/i.test(text)) score -= 12;
   if (/merge-risk:/i.test(text)) score -= 8;
   if (mergeState === "UNSTABLE") score -= 10;
+  if (proposalMode && failedChecks.length > 0) score -= 20;
+  if (proposalMode && pendingChecks.length > 0) score -= 8;
 
   return {
     number: pr.number,
@@ -702,6 +750,7 @@ function analyze(pr) {
     rating: labels.find((label) => label.startsWith("rating:")) ?? "",
     status: labels.find((label) => label.startsWith("status:")) ?? "",
     reasons,
+    warnings,
   };
 }
 
@@ -718,7 +767,7 @@ const hydrationPool = qualified.slice(0, limit);
 process.stdout.write(
   `${JSON.stringify(
     {
-      phase: requireHydrated ? "hydrated" : "discovery",
+      phase: proposalMode ? "proposal" : requireHydrated ? "hydrated" : "discovery",
       selected: hydrationPool.slice(0, batchSize),
       hydrationPool,
       qualifiedCount: qualified.length,

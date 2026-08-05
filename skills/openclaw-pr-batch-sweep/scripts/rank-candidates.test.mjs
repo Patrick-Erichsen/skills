@@ -996,6 +996,71 @@ test("excludes a carried PR only while its exact head is unchanged", () => {
   }
 });
 
+test("excludes a queued proposal only while its exact head is unchanged", () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "openclaw-pr-ledger-"));
+  const ledgerPath = path.join(directory, "ledger.json");
+  writeFileSync(
+    ledgerPath,
+    JSON.stringify({
+      candidateQueue: [
+        { number: 12345, headSha: "abcdef1234567", status: "proposed" },
+      ],
+    }),
+  );
+
+  try {
+    const unchanged = runHydratedArgs(
+      hydratedPr({ headRefOid: "abcdef1234567" }),
+      ["--proposal-mode", "--decision-ledger", ledgerPath],
+    );
+    assert.equal(unchanged.selected.length, 0);
+    assert.deepEqual(unchanged.rejected[0].reasons, [
+      "already proposed at unchanged head",
+    ]);
+
+    const changed = runHydratedArgs(
+      hydratedPr({ headRefOid: "fedcba7654321" }),
+      ["--proposal-mode", "--decision-ledger", ledgerPath],
+    );
+    assert.equal(changed.rejected.length, 0);
+    assert.equal(changed.selected.length, 1);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("proposal mode keeps failing CI visible as a warning", () => {
+  const output = runHydratedArgs(
+    hydratedPr({
+      statusCheckRollup: [
+        checkRun({
+          status: "COMPLETED",
+          conclusion: "FAILURE",
+          startedAt: "2026-07-01T10:00:00Z",
+          completedAt: "2026-07-01T10:10:00Z",
+        }),
+      ],
+    }),
+    ["--proposal-mode"],
+  );
+
+  assert.equal(output.phase, "proposal");
+  assert.equal(output.rejected.length, 0);
+  assert.equal(output.selected.length, 1);
+  assert.deepEqual(output.selected[0].warnings, ["failing checks"]);
+});
+
+test("proposal mode keeps unresolved mergeability visible as a warning", () => {
+  const output = runHydratedArgs(
+    hydratedPr({ mergeable: null, mergeable_state: "unknown" }),
+    ["--proposal-mode"],
+  );
+
+  assert.equal(output.rejected.length, 0);
+  assert.equal(output.selected.length, 1);
+  assert.deepEqual(output.selected[0].warnings, ["unresolved merge state"]);
+});
+
 test("deduplicates repeated REST pages by PR number", () => {
   const pr = hydratedPr();
   const output = runHydratedMany([pr, pr, pr], []);

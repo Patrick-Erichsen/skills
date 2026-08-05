@@ -1,0 +1,48 @@
+# Candidate approval gate
+
+Use this gate to separate cheap discovery from substantive review and repair.
+
+## Proposal phase
+
+Discovery may read public metadata, PR files, labels, checks, mergeability, and existing review summaries. It does not establish whether the patch is correct or best.
+
+For each candidate, present:
+
+- PR link, title, author, exact head SHA, age, and source (`operator` or `discovery`).
+- Claimed operator or contributor value in one sentence.
+- Surface, production/test/docs LOC, changed-file count, and change kind.
+- Live mergeability and CI summary, including every failing or pending non-routine check.
+- Visible risk labels or policy warnings.
+- Estimated review cost: `small`, `medium`, or `large`.
+- Recommendation: `approve for review`, `decline`, or `needs operator judgment`.
+
+These are candidate cards, not code-review verdicts. Use `unknown` for facts that require code execution or owner-boundary analysis.
+
+## Durable states
+
+Write proposals to `decision-ledger.json.candidateQueue`:
+
+```json
+{
+  "number": 12345,
+  "headSha": "0123456789abcdef",
+  "status": "proposed",
+  "source": "discovery",
+  "proposedAt": "2026-08-05T00:00:00Z"
+}
+```
+
+Allowed states:
+
+- `proposed`: waiting for operator decision.
+- `approved`: exact head may enter substantive qualification.
+- `declined`: exact head will not be reviewed.
+- `deferred`: keep visible but take no action.
+- `delegated`: another named task owns the exact head.
+- `superseded`: the head changed after the recorded decision.
+
+An approval covers only the recorded SHA. A changed head becomes a new proposal. Terminal ledger categories remain terminal regardless of candidate-queue state.
+
+## Approval boundary
+
+Before approval, stay in metadata screening. After approval, refresh the live head and follow the full qualification, proof, repair, and landing workflow. The private state repository is the workflow tracker; make no Linear calls or issues.
