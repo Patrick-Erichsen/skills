@@ -5,6 +5,10 @@ work.
 
 ## Skills
 
+### Agent
+
+- [`openclaw-pr-batch-sweep`](skills/openclaw-pr-batch-sweep): Select, review, repair, validate, and land bounded OpenClaw contributor PR batches with durable cross-run state.
+
 ### Utils
 
 - [`html`](skills/html): Choose and create single-file HTML artifacts for visual explanations, plans, reviews, and lightweight tools.

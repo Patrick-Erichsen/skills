@@ -1,0 +1,8 @@
+interface:
+  display_name: "OpenClaw PR Batch Sweep"
+  short_description: "Run durable OpenClaw PR review batches"
+  brand_color: "#111827"
+  default_prompt: "Use $openclaw-pr-batch-sweep to select and drive the next bounded batch of OpenClaw pull requests."
+
+policy:
+  allow_implicit_invocation: true
