@@ -360,6 +360,10 @@ function isOverlapEligible(pr) {
   if (pr.isDraft ?? pr.is_draft ?? pr.draft) return false;
   if (pr.state && String(pr.state).toUpperCase() !== "OPEN") return false;
   if (terminalDecisions.has(Number(pr.number))) return false;
+  if (pr.maintainerParticipationChecked !== true) return false;
+  if (Array.isArray(pr.maintainerInteractions) && pr.maintainerInteractions.length > 0) {
+    return false;
+  }
   if (!hasValidCheckRollup(pr)) return false;
 
   const mergeState = String(
@@ -655,6 +659,16 @@ function analyze(pr) {
   if (requireHydrated && pr.hydrationComplete === false) {
     reasons.push("incomplete hydration");
   }
+  if (requireHydrated && pr.maintainerParticipationChecked !== true) {
+    reasons.push("maintainer participation not checked");
+  }
+  if (
+    requireHydrated &&
+    Array.isArray(pr.maintainerInteractions) &&
+    pr.maintainerInteractions.length > 0
+  ) {
+    reasons.push("prior maintainer participation");
+  }
   if (requireHydrated && hasKnownPaths && productionFiles.length === 0 && !docsChange) {
     reasons.push("non-production-only");
   }
@@ -741,6 +755,9 @@ function analyze(pr) {
     changedFiles: fileCount,
     productionFiles: productionFiles.length,
     docsChange,
+    maintainerInteractions: Array.isArray(pr.maintainerInteractions)
+      ? pr.maintainerInteractions
+      : [],
     exceptionGate: provenLifecycleMicroFix
       ? "proven lifecycle micro-fix"
       : provisionalLifecycleMicroFix

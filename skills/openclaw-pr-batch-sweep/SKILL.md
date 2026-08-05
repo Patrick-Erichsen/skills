@@ -5,7 +5,7 @@ license: MIT
 metadata:
   source: "https://github.com/Patrick-Erichsen/skills/tree/main/skills/openclaw-pr-batch-sweep"
   upstream: "https://github.com/vincentkoc/dotskills/tree/main/skills/openclaw-pr-batch-sweep"
-  version: "0.5.0"
+  version: "0.5.1"
   spec: agentskills-v1
 ---
 
@@ -14,6 +14,8 @@ metadata:
 ## Purpose
 
 Drive a continuing queue of useful OpenClaw contributor PRs through two explicit phases: build a 20-item proposal queue for operator approval, then automatically review, repair, prove, and land approved work. Approval is the execution kickoff, not merely permission to inspect code. Focused micro-PRs, UI work, and docs changes are eligible.
+
+Exclude PRs that already received human participation from an OpenClaw maintainer. Existing maintainer involvement means the PR is already in another maintainer's funnel and should not consume this discovery queue.
 
 Requires `gh`, `gitcrawl`, and the OpenClaw maintainer, testing, autoreview, Crabbox, and ClawSweeper skills. Use `ghx` and `gwt` when available; fall back to `gh`/REST and native Git worktrees when absent. The private sweep-state repository is the only coordination ledger; this workflow creates no Linear work.
 
@@ -36,6 +38,7 @@ Compose the repository skills instead of duplicating them:
 - The queue must exclude drafts, maintainer-owned work, security, SSRF, auth, config migrations, and other high-risk changes.
 - Focused micro-PRs, UI work, and docs changes should be considered instead of rejected by surface or size alone.
 - Prior accept/reject decisions should shape future candidate selection.
+- PRs already touched by another human OpenClaw maintainer should stay out of the proposal queue.
 - Reuse a small retained worker pool so review scales without accumulating completed workers or creating noisy local process pressure.
 
 ## Workflow
@@ -59,9 +62,12 @@ Compose the repository skills instead of duplicating them:
    - Combine `handled_refs` and `explicit_skips` into comma-separated `HANDLED_PRS`. Numbers, `#123`, and full pull-request URLs are accepted.
    - Run `scripts/rank-candidates.mjs --input "$OPEN_PRS_JSON" --limit 100 --batch-size 20 --proposal-mode --decision-ledger "$DECISION_LEDGER" --exclude "$HANDLED_PRS"` as a first-pass noise filter.
    - Set `HYDRATED_PRS_JSON` to a second JSON file, then hydrate the top 30-40 with `scripts/hydrate-candidates.mjs --input <ranked.json> --output "$HYDRATED_PRS_JSON"`. It serially merges authoritative REST author association, file count, merge state, paginated file deltas, and live check rollups while retrying unresolved mergeability.
+   - During hydration, inspect every page of top-level PR comments, submitted reviews, and inline review comments. Ignore bots and the PR author. Load the live repository collaborator-permission map once per run, then record participating humans with `write`, `maintain`, or `admin` access in `maintainerInteractions`.
+   - Hard-reject any hydrated PR with a non-empty `maintainerInteractions` list. Also reject candidates when the participation check is incomplete; never assume missing comment evidence means no maintainer has participated.
    - If process launch returns `EMFILE`, `Too many open files`, or another file-descriptor exhaustion error, stop spawning workers and parallel shells immediately. Let retained lanes finish, then continue from the coordinator with one shell call at a time.
    - When REST returns `mergeable: null` or an unknown merge state, retry that PR fetch up to three times with a two-second delay. If GitHub still has not resolved it, show mergeability as an indeterminate candidate warning.
    - Rerun with `--input "$HYDRATED_PRS_JSON" --hydrated --proposal-mode`. Candidate selection still rejects incomplete identity/files, dirty conflicts, and hard-risk paths. Failed or pending CI is a visible candidate warning because repair happens only after approval.
+   - If maintainer-participated PRs consume the hydration pool, continue hydrating lower-ranked candidates until 20 untouched proposals qualify or the bounded search is exhausted.
    - Risk labels are routing signals, not proof of a risky surface. Exact security/auth and availability labels are hard exclusions. A compatibility label alone still requires qualification against the title and changed paths.
    - Production-size is a ranking signal, not a hard gate. Docs-only and focused UI changes are eligible. Test-only work remains excluded unless the operator changes that policy.
    - Apply the full operator policy. ClawSweeper diamond/platinum labels improve rank but never override a hard exclusion.

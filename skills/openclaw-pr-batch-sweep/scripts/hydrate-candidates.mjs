@@ -54,6 +54,7 @@ const commandEnv = {
 const transientFailurePattern =
   /(?:TLS handshake timeout|connection reset|connection refused|EOF|HTTP 5\d\d|server closed idle connection|temporary failure|timeout)/i;
 const maxTransientAttempts = 5;
+let maintainerPermissionMap;
 
 function runJson(commandArgs) {
   for (let attempt = 1; attempt <= maxTransientAttempts; attempt += 1) {
@@ -103,6 +104,85 @@ function unresolvedMergeability(pr) {
   return pr.mergeable === null || String(pr.mergeable_state ?? "").toLowerCase() === "unknown";
 }
 
+function fetchPages(endpoint) {
+  const entries = [];
+  for (let page = 1; ; page += 1) {
+    const separator = endpoint.includes("?") ? "&" : "?";
+    const pageEntries = runJson(["api", `${endpoint}${separator}per_page=25&page=${page}`]);
+    if (!Array.isArray(pageEntries)) {
+      throw new Error(`Expected array response for ${endpoint}, page ${page}`);
+    }
+    entries.push(...pageEntries);
+    if (pageEntries.length < 25) return entries;
+  }
+}
+
+function normalizedParticipant(entry) {
+  const login = String(entry?.user?.login ?? "").trim();
+  const type = String(entry?.user?.type ?? "").toLowerCase();
+  if (!login || type === "bot" || login.toLowerCase().endsWith("[bot]")) return null;
+  return login;
+}
+
+function collaboratorPermission(collaborator) {
+  if (collaborator?.permissions?.admin) return "admin";
+  if (collaborator?.permissions?.maintain) return "maintain";
+  if (collaborator?.permissions?.push) return "write";
+  const role = String(collaborator?.role_name ?? "").toLowerCase();
+  if (["admin", "maintain", "write"].includes(role)) return role;
+  return "";
+}
+
+function currentMaintainers() {
+  if (maintainerPermissionMap) return maintainerPermissionMap;
+  maintainerPermissionMap = new Map();
+  for (const collaborator of fetchPages(`repos/${repo}/collaborators?affiliation=all`)) {
+    const login = String(collaborator?.login ?? "").trim();
+    const permission = collaboratorPermission(collaborator);
+    if (login && permission) {
+      maintainerPermissionMap.set(login.toLowerCase(), { login, permission });
+    }
+  }
+  return maintainerPermissionMap;
+}
+
+function maintainerInteractions(number, authorLogin) {
+  const surfaces = [
+    ["issue-comment", `repos/${repo}/issues/${number}/comments`],
+    ["review", `repos/${repo}/pulls/${number}/reviews`],
+    ["inline-comment", `repos/${repo}/pulls/${number}/comments`],
+  ];
+  const participants = new Map();
+  const normalizedAuthor = String(authorLogin ?? "").toLowerCase();
+
+  for (const [surface, endpoint] of surfaces) {
+    for (const entry of fetchPages(endpoint)) {
+      const login = normalizedParticipant(entry);
+      if (!login || login.toLowerCase() === normalizedAuthor) continue;
+      const current = participants.get(login.toLowerCase()) ?? {
+        login,
+        surfaces: new Set(),
+      };
+      current.surfaces.add(surface);
+      participants.set(login.toLowerCase(), current);
+    }
+  }
+
+  if (participants.size === 0) return [];
+  const maintainers = currentMaintainers();
+  return [...participants.values()]
+    .filter((participant) => maintainers.has(participant.login.toLowerCase()))
+    .map((participant) => {
+      const maintainer = maintainers.get(participant.login.toLowerCase());
+      return {
+        login: maintainer.login,
+        permission: maintainer.permission,
+        surfaces: [...participant.surfaces].sort(),
+      };
+    })
+    .sort((left, right) => left.login.localeCompare(right.login));
+}
+
 function hydrate(candidate) {
   const number = Number(candidate.number);
   if (!Number.isInteger(number) || number < 1) {
@@ -145,6 +225,11 @@ function hydrate(candidate) {
     rest = runJson(["api", `repos/${repo}/pulls/${number}`]);
   }
 
+  const priorMaintainerInteractions = maintainerInteractions(
+    number,
+    live.author?.login ?? rest.user?.login ?? candidate.author_login,
+  );
+
   return {
     ...candidate,
     ...rest,
@@ -164,6 +249,8 @@ function hydrate(candidate) {
     statusCheckRollup: Array.isArray(live.statusCheckRollup)
       ? live.statusCheckRollup
       : [],
+    maintainerParticipationChecked: true,
+    maintainerInteractions: priorMaintainerInteractions,
     files,
   };
 }
