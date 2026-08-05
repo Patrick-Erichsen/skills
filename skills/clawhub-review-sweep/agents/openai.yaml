@@ -1,0 +1,8 @@
+interface:
+  display_name: "ClawHub Review Sweep"
+  short_description: "Review every open ClawHub issue and PR privately"
+  brand_color: "#111827"
+  default_prompt: "Use $clawhub-review-sweep to refresh and review every open ClawHub issue and pull request in the private ledger, then stop for my approval before any public action."
+
+policy:
+  allow_implicit_invocation: true

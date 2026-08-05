@@ -7,6 +7,7 @@ work.
 
 ### Agent
 
+- [`clawhub-review-sweep`](skills/clawhub-review-sweep): Review and durably track every open ClawHub issue and pull request in a private approval-gated ledger.
 - [`openclaw-pr-batch-sweep`](skills/openclaw-pr-batch-sweep): Select, review, repair, validate, and land bounded OpenClaw contributor PR batches with durable cross-run state.
 
 ### Utils
