@@ -1,6 +1,6 @@
 # Operator Selection Policy
 
-Use this policy for Patrick's OpenClaw contributor PR batches. Metadata ranking is only a rejection aid; live qualification decides whether a PR belongs in the batch.
+Use this policy for Patrick's OpenClaw contributor PR batches. Metadata ranking builds an approval queue; only operator-approved exact heads may enter live qualification.
 
 ## Eligible Work
 
@@ -13,9 +13,9 @@ Do not reject a PR merely because it is small or touches UI or docs.
 
 Small does not mean automatically good. Cleanup, typo, wording, or mechanical changes still need enough value to justify review, but line count is never the deciding gate.
 
-## Hard Rejects
+## Execution Hard Rejects
 
-Reject before assigning an implementation lane:
+Reject before assigning an implementation lane unless Patrick explicitly approves the named risk override:
 
 - Draft PRs or current maintainer-authored/labeled queue work.
 - Explicitly skipped, terminally handled, already rejected, closed, merged, or superseded PRs.
@@ -43,6 +43,8 @@ These remain excluded until Patrick explicitly changes them:
 - Test-only or generated-only work.
 - Bundled-skill expansion and other optional core expansion better owned by plugins or ClawHub.
 - Large changes above roughly 500 production lines or 12 files.
+
+An operator-provided item may still appear as an exception candidate. Its card must name every policy conflict, and approval must explicitly cover those conflicts before substantive qualification starts.
 
 ## Qualification Gate
 
@@ -78,7 +80,7 @@ Rank higher with:
 4. Live mergeability and relevant green checks.
 5. A focused changed-file surface.
 
-Downgrade or reject `needs proof`, `waiting on author`, dirty/conflicting or stale heads, exact hard-risk labels, missing context, unexplained generated changes, or repeated proof-refresh commits.
+Downgrade or reject `needs proof`, `waiting on author`, dirty/conflicting or stale heads, exact hard-risk labels, missing context, unexplained generated changes, or repeated proof-refresh commits. Failed or pending CI remains visible as a proposal warning; exact-head green proof is mandatory before landing.
 
 GitHub `UNSTABLE` is a downgrade rather than an automatic rejection when the latest hydrated non-routine checks have no failure or pending state. Landing still requires exact-head green proof.
 
@@ -90,4 +92,4 @@ Reject optional core expansion, bundled-skill expansion, duplicate MCP/agent inf
 
 ## Batch Rule
 
-`20` means at most 20 qualified work items, never 20 sampled PRs. Do not pad. Continue the durable handled set across later batch requests.
+`20` means 20 plausible proposal cards for operator approval, not 20 sampled PRs and not 20 pre-reviewed patches. Continue scanning newer PRs and then the older backlog until 20 pass proposal screening or the bounded search is exhausted. Do not pad.

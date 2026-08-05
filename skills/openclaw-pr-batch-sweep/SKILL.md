@@ -1,11 +1,11 @@
 ---
 name: openclaw-pr-batch-sweep
-description: Select, review, repair, validate, and land batches of up to 20 OpenClaw contributor pull requests with durable cross-run state and bounded review lanes. Includes focused micro-PRs, UI work, and docs changes while preserving exact-head safety gates.
+description: Find 20 OpenClaw PR candidates for operator approval, then review, repair, validate, and land only approved exact heads. Uses durable cross-run state, older-backlog discovery, and bounded execution lanes.
 license: MIT
 metadata:
   source: "https://github.com/Patrick-Erichsen/skills/tree/main/skills/openclaw-pr-batch-sweep"
   upstream: "https://github.com/vincentkoc/dotskills/tree/main/skills/openclaw-pr-batch-sweep"
-  version: "0.3.0"
+  version: "0.4.0"
   spec: agentskills-v1
 ---
 
@@ -13,11 +13,11 @@ metadata:
 
 ## Purpose
 
-Drive a continuing queue of useful OpenClaw contributor PRs through qualification, repair, proof, and landing. Work in batches of up to 20 without padding. Focused micro-PRs, UI work, and docs changes are eligible when their value and proof justify review.
+Drive a continuing queue of useful OpenClaw contributor PRs through two explicit phases: build a 20-item proposal queue for operator approval, then review, repair, prove, and land only approved exact heads. Focused micro-PRs, UI work, and docs changes are eligible.
 
-Requires `gh`, `gitcrawl`, and the OpenClaw maintainer, testing, autoreview, Crabbox, ClawSweeper, and GitHub review-triage skills. Use `ghx` and `gwt` when available; fall back to `gh`/REST and native Git worktrees when absent.
+Requires `gh`, `gitcrawl`, and the OpenClaw maintainer, testing, autoreview, Crabbox, and ClawSweeper skills. Use `ghx` and `gwt` when available; fall back to `gh`/REST and native Git worktrees when absent. The private sweep-state repository is the only coordination ledger; this workflow creates no Linear work.
 
-Read [references/operator-selection-policy.md](references/operator-selection-policy.md) before selecting candidates. Read [references/worker-contract.md](references/worker-contract.md) before spawning sub-agents.
+Read [references/operator-selection-policy.md](references/operator-selection-policy.md) before selecting candidates. Read [references/candidate-approval.md](references/candidate-approval.md) before presenting or acting on candidates. Read [references/worker-contract.md](references/worker-contract.md) before spawning sub-agents after approval.
 Read and update the canonical ledger in the private `Patrick-Erichsen/openclaw-pr-sweep-state` repository so fresh runs inherit prior screened, carried, landed, rejected, closed, and explicitly skipped PRs.
 
 Compose the repository skills instead of duplicating them:
@@ -31,7 +31,7 @@ Compose the repository skills instead of duplicating them:
 ## When to use
 
 - The operator says `next 20`, `continue the PR sweep`, or asks for another batch.
-- The operator wants contributor PRs reproduced, narrowed, repaired, tested, and landed.
+- The operator wants to inspect and approve contributor PRs before review or repair starts.
 - The queue must exclude drafts, maintainer-owned work, security, SSRF, auth, config migrations, and other high-risk changes.
 - Focused micro-PRs, UI work, and docs changes should be considered instead of rejected by surface or size alone.
 - Prior accept/reject decisions should shape future candidate selection.
@@ -39,43 +39,45 @@ Compose the repository skills instead of duplicating them:
 
 ## Workflow
 
-1. Recover and continue the existing queue.
+1. Recover the proposal and execution queues.
    - Read recent thread state and clone or refresh `Patrick-Erichsen/openclaw-pr-sweep-state` in a task-owned isolated checkout.
    - Set `DECISION_LEDGER` to that checkout's `decision-ledger.json`. Never update Vincent's upstream ledger or an installed skill copy.
-   - Preflight `gh`, `gitcrawl`, optional `ghx`, optional `gwt`, repository skills, and remote proof providers before candidate work.
-   - Read `auditWatermark` when present. Use `openPrThrough` as the default floor for newly created PR discovery instead of rehydrating an unchanged live edge.
-   - The watermark is not a terminal decision. An older unhandled PR may re-enter only when its head SHA or risk/readiness state materially changed; terminal ledger entries never re-enter.
+   - Preflight `gh`, `gitcrawl`, optional `ghx`, and repository skills before candidate work. Defer worktrees and remote proof providers until an exact head is approved.
+   - Read `auditWatermark.openPrThrough` as the forward-edge cursor and `backlogCursor.nextPrBefore` as the independent older-backlog cursor. Never move the forward watermark backward.
+   - Read `candidateQueue`. An unchanged `proposed`, `approved`, `declined`, `deferred`, or `delegated` head does not re-enter discovery. A materially changed head returns as a new proposal; terminal ledger entries never re-enter.
    - Verify current `main`, live PR state, repo instructions, `VISION.md`, disk, and worktree health.
    - Keep a handled set containing merged, closed, rejected, ignored, draft, and explicitly skipped PRs.
    - Never recycle prior candidates merely because their metadata changed.
 
-2. Discover broadly, then reject aggressively.
+2. Build a proposal queue of 20 candidates.
    - Start with `gitcrawl`; verify live state with `ghx` when installed, otherwise `gh`. If `gitcrawl` is stale, malformed, or unavailable, fall through immediately to live REST through the available GitHub CLI.
    - Run discovery and hydration shell calls serially on the maintainer host. Do not fan out `gitcrawl`, `ghx`, or per-PR REST calls in parallel.
-   - Fetch at least 100 open PRs. Widen toward 1000 when the strict filter yields fewer than 20.
+   - Resolve operator-provided PRs and issues first. For an issue, check for an existing open repair PR and collapse the pair into one candidate instead of proposing a duplicate implementation.
+   - Scan PRs newer than `auditWatermark.openPrThrough`, then continue backward from `backlogCursor.nextPrBefore`. Fetch in bounded pages until 20 candidates are proposed or 1000 live open PRs have been inspected. Exhaustion may return fewer than 20; never pad.
    - Write discovery JSON to a file and set `OPEN_PRS_JSON` to that path. The ranker accepts either a raw PR array or gitcrawl's `{ "threads": [...] }` envelope. It normalizes `labels_json`, `author_login`, and `is_draft`; do not strip those fields before ranking.
    - Combine `handled_refs` and `explicit_skips` into comma-separated `HANDLED_PRS`. Numbers, `#123`, and full pull-request URLs are accepted.
-   - Run `scripts/rank-candidates.mjs --input "$OPEN_PRS_JSON" --limit 40 --batch-size 20 --decision-ledger "$DECISION_LEDGER" --exclude "$HANDLED_PRS"` as a first-pass noise filter.
+   - Run `scripts/rank-candidates.mjs --input "$OPEN_PRS_JSON" --limit 100 --batch-size 20 --proposal-mode --decision-ledger "$DECISION_LEDGER" --exclude "$HANDLED_PRS"` as a first-pass noise filter.
    - Set `HYDRATED_PRS_JSON` to a second JSON file, then hydrate the top 30-40 with `scripts/hydrate-candidates.mjs --input <ranked.json> --output "$HYDRATED_PRS_JSON"`. It serially merges authoritative REST author association, file count, merge state, paginated file deltas, and live check rollups while retrying unresolved mergeability.
    - If process launch returns `EMFILE`, `Too many open files`, or another file-descriptor exhaustion error, stop spawning workers and parallel shells immediately. Let retained lanes finish, then continue from the coordinator with one shell call at a time.
-   - When REST returns `mergeable: null` or an unknown merge state, retry that PR fetch up to three times with a two-second delay. If GitHub still has not resolved it, carry the PR as indeterminate instead of admitting it to the final batch.
-   - Rerun with `--input "$HYDRATED_PRS_JSON" --hydrated`. Final selection rejects missing author association, partial file hydration, dirty/conflicting state, failed checks, and high-risk changed paths.
-   - Treat pending non-routine checks as not ready. Do not admit them merely because older checks passed.
+   - When REST returns `mergeable: null` or an unknown merge state, retry that PR fetch up to three times with a two-second delay. If GitHub still has not resolved it, show mergeability as an indeterminate candidate warning.
+   - Rerun with `--input "$HYDRATED_PRS_JSON" --hydrated --proposal-mode`. Candidate selection still rejects incomplete identity/files, dirty conflicts, and hard-risk paths. Failed or pending CI is a visible candidate warning because repair happens only after approval.
    - Risk labels are routing signals, not proof of a risky surface. Exact security/auth and availability labels are hard exclusions. A compatibility label alone still requires qualification against the title and changed paths.
    - Production-size is a ranking signal, not a hard gate. Docs-only and focused UI changes are eligible. Test-only work remains excluded unless the operator changes that policy.
    - Apply the full operator policy. ClawSweeper diamond/platinum labels improve rank but never override a hard exclusion.
 
-3. Build a batch of up to 20 qualified PRs.
+3. Present candidates and stop at the approval gate.
    - Prefer concrete user, operator, contributor, or maintainer value with a traceable owner path and a clean best-fix shape.
    - Admit micro-PRs based on value and proof, not line count. A one-line correction can qualify when its contract or failing behavior is clear.
    - Admit focused UI work with appropriate browser or visual proof and source-backed docs changes with link, command, schema, or behavior validation.
    - Continue rejecting test-only coverage, speculative hardening, feature work, and compatibility or ownership decisions unless the operator changes those policies.
-   - Apply a maintainer-value gate after metadata ranking: state who observes the failure, what breaks, the failing-before proof, why the patch is not merely defensive cleanup, and why review cost is justified.
+   - Apply a proposal-value gate after metadata ranking: state who benefits, what the PR claims to change, visible CI/merge risk, estimated review cost, and why review time may be justified. This is a screening summary, not a best-fix verdict.
    - Treat the ranking script as a rejection tool, never as proof that a PR belongs in the batch.
-   - Do not pad. If only 13 qualify, the batch is 13.
+   - Write each candidate to `candidateQueue` with `status: proposed`, exact head SHA, source, and proposal evidence. Present the compact cards defined in `references/candidate-approval.md`.
+   - Stop. Create no worktree, sub-agent review, test execution, remote lease, comment, ClawSweeper request, repair, or landing action before explicit operator approval.
+   - Record `approved`, `declined`, or `deferred` against the exact proposed head. Never infer approval from inclusion, labels, prior bot reviews, or the request to discover candidates.
 
-4. Fan out bounded read-only qualification.
-   - Before creating a review task, worktree, or substantive review for a third-party PR, run `$github-review-triage` and resolve or reuse its canonical Linear GitHub Triage issue.
+4. Qualify only approved exact heads.
+   - Refresh live state before starting. If the head differs from the approved SHA, set the old entry to `superseded`, create a new proposal, and return it to the operator.
    - Use two retained qualification workers by default, normally with a serial queue of 3-5 PRs per worker. Do not exceed two unless the operator explicitly asks for more concurrency.
    - Reassign the retained workers as they finish instead of spawning replacement workers for each PR.
    - Give each PR to exactly one qualification agent.
@@ -84,7 +86,7 @@ Compose the repository skills instead of duplicating them:
    - Agents do not comment, close, push, rebase, label, or merge.
    - Require the return schema in `references/worker-contract.md`.
 
-5. Promote only qualified PRs into implementation lanes.
+5. Promote only qualified, approved PRs into implementation lanes.
    - Use one retained implementation worker by default and never exceed two active implementation workers.
    - Reassign the retained worker as each PR finishes.
    - Use one isolated worktree per PR through `gwt` when installed or native `git worktree` otherwise. Never share a worktree between agents.
@@ -118,12 +120,12 @@ Compose the repository skills instead of duplicating them:
    - Remove blocked or carried worktrees too unless the next action is actively continuing in the current run. Recreate them later from the remote PR head instead of accumulating stale local state.
    - Never remove a worktree owned by another process, tmux pane, Codex session, or agent. Inspect live process cwd/locks first; if ownership is unclear, leave it and report the path.
 
-8. Close the batch with a ledger.
+8. Close the execution batch with a ledger.
    - Record each PR as `landed`, `closed`, `rejected`, `blocked`, or `carried`.
-   - Update `decision-ledger.json` in the canonical state repository. Record terminal decisions and explicit skips, plus carried or screened PRs with their exact head SHA so an unchanged head is not reviewed again.
+   - Update `decision-ledger.json` in the canonical state repository. Preserve the proposal decision and record terminal execution decisions, explicit skips, and carried PRs with exact head SHAs.
    - Write one append-only `runs/<date>-<slug>.json` outcome ledger for the batch.
    - A screened or carried PR may re-enter when its exact head or material readiness state changes. Terminal merged, closed, superseded, or explicitly skipped PRs never re-enter.
-   - After exhausting a live edge, update `auditWatermark` with the highest authoritatively inspected open PR, UTC timestamp, and `origin/main` SHA.
+   - After exhausting the live edge, advance `auditWatermark` with the highest authoritatively inspected open PR, UTC timestamp, and `origin/main` SHA. After an older-backlog page, move only `backlogCursor.nextPrBefore` to the oldest inspected PR number.
    - Include exact merge SHA, replacement/canonical PR, proof commands or run IDs, and cleanup links.
    - Carry only concrete unresolved work into the next batch.
    - Verify every worktree created by the batch is removed or explicitly listed as still active with its owner and next action.
@@ -132,18 +134,22 @@ Compose the repository skills instead of duplicating them:
 
 ## Inputs
 
-- `batch_size`: default `20`, maximum `20`.
+- `candidate_target`: default `20`, maximum `20`.
+- `approval_gate`: required.
+- `discovery_mode`: default `new-then-backlog`.
 - `repo`: default `openclaw/openclaw`.
 - `state_repo`: default `Patrick-Erichsen/openclaw-pr-sweep-state`.
 - `explicit_skips`: PR numbers or URLs the operator has excluded.
-- `handled_refs`: merged, closed, rejected, ignored, or already-reviewed PRs.
+- `provided_items`: operator-provided PR or issue URLs, proposed first.
+- `handled_refs`: merged, closed, rejected, ignored, delegated, or already-reviewed PRs.
 - `concurrency`: default `2` retained qualification workers and `1` retained implementation worker; maximum `2` implementation workers.
-- `source_mode`: `discovery` or `provided-prs`; default `discovery`.
+- `source_mode`: `discovery`, `provided-items`, or `combined`; default `combined`.
 - `risk_overrides`: explicit operator-approved exceptions only.
 
 ## Outputs
 
-- Candidate ledger with up to 20 qualified PRs and no padding.
+- Approval queue with up to 20 candidate cards and no padding.
+- Explicit operator decisions tied to exact head SHAs.
 - Per-PR evidence map, best-fix verdict, proof plan, and terminal action.
 - Exact worktree/branch ownership for active implementation lanes.
 - Landed PR URLs and SHAs, closed/rejected refs with reasons, CI/Testbox/Crabbox proof, and remaining blockers.
