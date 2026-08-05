@@ -19,7 +19,7 @@ Each retained qualification lane receives a serial queue of 3-5 operator-approve
 
 For each PR:
 
-1. Verify that the live head matches the operator-approved SHA, then verify open/draft/author/labels/mergeability/check state.
+1. Verify that the live head matches the operator-approved execution root before lane ownership, then verify open/draft/author/labels/mergeability/check state.
 2. Read the issue, PR body, comments, changed functions/modules or docs/UI surface, one caller and callee when applicable, siblings sharing the invariant, adjacent tests, and current `origin/main`.
 3. Search duplicates and fixed-on-main work.
 4. Check dependency source/docs/types when behavior depends on a library or external API.
@@ -67,6 +67,7 @@ Requirements:
 - Never execute contributor-controlled code on the maintainer host. Run tests, builds, package-manager commands, scripts, E2E, Docker, and live checks for a contributor head only in Testbox/Crabbox.
 - Local execution is allowed only after the coordinator has reviewed and reconstructed a trusted maintainer-owned patch that excludes contributor-controlled setup and hooks; remote proof remains the default.
 - Run fresh autoreview after the final diff.
+- Keep every task-owned repair commit descended from the approved execution root and report the complete root-to-final head chain.
 - When the coordinator delegates editable-fork synchronization, keep it inside OpenClaw's native PR wrapper. If GraphQL exceeds its payload limit after a rebase, use the wrapper's lease-checked git mode only with explicit coordinator delegation.
 - Do not comment, push, close, or merge unless the coordinator explicitly delegates that mutation.
 
@@ -103,4 +104,5 @@ GitHub mutations performed:
 - For editable-fork sync, use `${OPENCLAW_ROOT}/scripts/pr prepare-sync-head`. A GraphQL payload-limit fallback may set `OPENCLAW_PR_PUSH_MODE=git OPENCLAW_ALLOW_UNSIGNED_GIT_PUSH=1`; never replace the wrapper with a raw push.
 - When a Testbox starts from `main`, reconstruct the exact contributor head with `pull/<PR>/head` before gates and overlay only reviewed maintainer repair files. Never fill sparse omissions from a newer `main` tree onto the contributor head.
 - Recheck live state immediately before every mutation.
+- Once the operator approves an execution root, continue through necessary coordinator-delegated repair, push, review, and landing mutations without requesting another kickoff. Stop for external head changes or newly discovered decisions outside the approved outcome.
 - Do not merge a result based only on a worker summary; inspect the final diff and proof.
