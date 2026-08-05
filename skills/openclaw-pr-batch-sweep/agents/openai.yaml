@@ -2,7 +2,7 @@ interface:
   display_name: "OpenClaw PR Batch Sweep"
   short_description: "Propose OpenClaw PRs, then land approved heads"
   brand_color: "#111827"
-  default_prompt: "Use $openclaw-pr-batch-sweep to propose 20 OpenClaw pull requests for my approval, then review and land only the approved exact heads."
+  default_prompt: "Use $openclaw-pr-batch-sweep to propose 20 OpenClaw pull requests for my approval, then automatically review, repair, prove, and land approved work without asking for another kickoff."
 
 policy:
   allow_implicit_invocation: true

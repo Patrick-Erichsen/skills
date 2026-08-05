@@ -1,11 +1,11 @@
 ---
 name: openclaw-pr-batch-sweep
-description: Find 20 OpenClaw PR candidates for operator approval, then review, repair, validate, and land only approved exact heads. Uses durable cross-run state, older-backlog discovery, and bounded execution lanes.
+description: Find 20 OpenClaw PR candidates for operator approval, then automatically review, repair, validate, and land approved work. Uses exact-head ancestry, durable cross-run state, older-backlog discovery, and bounded execution lanes.
 license: MIT
 metadata:
   source: "https://github.com/Patrick-Erichsen/skills/tree/main/skills/openclaw-pr-batch-sweep"
   upstream: "https://github.com/vincentkoc/dotskills/tree/main/skills/openclaw-pr-batch-sweep"
-  version: "0.4.0"
+  version: "0.5.0"
   spec: agentskills-v1
 ---
 
@@ -13,7 +13,7 @@ metadata:
 
 ## Purpose
 
-Drive a continuing queue of useful OpenClaw contributor PRs through two explicit phases: build a 20-item proposal queue for operator approval, then review, repair, prove, and land only approved exact heads. Focused micro-PRs, UI work, and docs changes are eligible.
+Drive a continuing queue of useful OpenClaw contributor PRs through two explicit phases: build a 20-item proposal queue for operator approval, then automatically review, repair, prove, and land approved work. Approval is the execution kickoff, not merely permission to inspect code. Focused micro-PRs, UI work, and docs changes are eligible.
 
 Requires `gh`, `gitcrawl`, and the OpenClaw maintainer, testing, autoreview, Crabbox, and ClawSweeper skills. Use `ghx` and `gwt` when available; fall back to `gh`/REST and native Git worktrees when absent. The private sweep-state repository is the only coordination ledger; this workflow creates no Linear work.
 
@@ -32,6 +32,7 @@ Compose the repository skills instead of duplicating them:
 
 - The operator says `next 20`, `continue the PR sweep`, or asks for another batch.
 - The operator wants to inspect and approve contributor PRs before review or repair starts.
+- The operator expects an approval to start qualification, bounded repair, proof, and guarded landing without a second kickoff or merge prompt.
 - The queue must exclude drafts, maintainer-owned work, security, SSRF, auth, config migrations, and other high-risk changes.
 - Focused micro-PRs, UI work, and docs changes should be considered instead of rejected by surface or size alone.
 - Prior accept/reject decisions should shape future candidate selection.
@@ -44,7 +45,7 @@ Compose the repository skills instead of duplicating them:
    - Set `DECISION_LEDGER` to that checkout's `decision-ledger.json`. Never update Vincent's upstream ledger or an installed skill copy.
    - Preflight `gh`, `gitcrawl`, optional `ghx`, and repository skills before candidate work. Defer worktrees and remote proof providers until an exact head is approved.
    - Read `auditWatermark.openPrThrough` as the forward-edge cursor and `backlogCursor.nextPrBefore` as the independent older-backlog cursor. Never move the forward watermark backward.
-   - Read `candidateQueue`. An unchanged `proposed`, `approved`, `declined`, `deferred`, or `delegated` head does not re-enter discovery. A materially changed head returns as a new proposal; terminal ledger entries never re-enter.
+   - Read `candidateQueue`. An unchanged `proposed`, `approved`, `declined`, `deferred`, or `delegated` head does not re-enter discovery. Resume unchanged approved entries automatically. A materially changed head returns as a new proposal; terminal ledger entries never re-enter.
    - Verify current `main`, live PR state, repo instructions, `VISION.md`, disk, and worktree health.
    - Keep a handled set containing merged, closed, rejected, ignored, draft, and explicitly skipped PRs.
    - Never recycle prior candidates merely because their metadata changed.
@@ -75,9 +76,12 @@ Compose the repository skills instead of duplicating them:
    - Write each candidate to `candidateQueue` with `status: proposed`, exact head SHA, source, and proposal evidence. Present the compact cards defined in `references/candidate-approval.md`.
    - Stop. Create no worktree, sub-agent review, test execution, remote lease, comment, ClawSweeper request, repair, or landing action before explicit operator approval.
    - Record `approved`, `declined`, or `deferred` against the exact proposed head. Never infer approval from inclusion, labels, prior bot reviews, or the request to discover candidates.
+   - Treat `approved` as authorization to continue immediately through qualification, bounded task-owned repair, exact-head proof, required public review actions, and guarded landing. Do not ask for a separate review kickoff, repair approval, push approval, or merge confirmation.
+   - A decline or skip authorizes ledger state only. Comment or close a PR only when the operator explicitly requests that public action, and refresh the live head immediately before doing it.
 
 4. Qualify only approved exact heads.
-   - Refresh live state before starting. If the head differs from the approved SHA, set the old entry to `superseded`, create a new proposal, and return it to the operator.
+   - Refresh live state before starting. If the live head differs from the approved SHA before this task owns the lane, set the old entry to `superseded`, create a new proposal, and return it to the operator.
+   - The approved SHA is the execution root. Coordinator-reviewed, task-owned repair commits that descend from that root remain inside the approval and do not require another operator round-trip. Record every resulting execution head. Any contributor, bot, or other external head change invalidates the lane and requires renewed approval.
    - Use two retained qualification workers by default, normally with a serial queue of 3-5 PRs per worker. Do not exceed two unless the operator explicitly asks for more concurrency.
    - Reassign the retained workers as they finish instead of spawning replacement workers for each PR.
    - Give each PR to exactly one qualification agent.
@@ -93,6 +97,7 @@ Compose the repository skills instead of duplicating them:
    - Prefer repairing the contributor PR when maintainers can edit it.
    - Close or replace only after the coordinator verifies the evidence and repository policy.
    - As a lane finishes, assign the next qualified PR from the same batch.
+   - Continue automatically. Pause only when the best fix expands beyond the approved PR's stated outcome into a product, security, migration, SDK, config, protocol, or broad architectural decision.
 
 6. Prove and narrow each PR.
    - Reproduce or establish strong source/dependency-contract proof before editing.
@@ -108,6 +113,7 @@ Compose the repository skills instead of duplicating them:
 7. Review and land serially.
    - Run fresh `$autoreview` on the final head until no accepted/actionable findings remain.
    - Require exact-head focused proof, relevant CI, clean mergeability, and resolved review threads.
+   - Approval authorizes landing, but never bypasses a repository safety gate. Land automatically only when every required gate covers the final immutable execution head.
    - Read the latest ClawSweeper review immediately before landing. If its installation hits a rate limit, honor the reset, retry only the failed exact item once after recovery, and carry the PR rather than creating a retry storm or bypassing the gate.
    - Use OpenClaw's repository-native PR review/prepare/merge wrapper from the trusted canonical `main` checkout, never a contributor-modified copy.
    - If exact-head CI exposes a deterministic failure already fixed independently on current `main`, verify the touched paths do not overlap, rebase through the native wrapper, and rerun exact-head CI. Do not copy the unrelated main fix into the contributor diff.
@@ -116,6 +122,7 @@ Compose the repository skills instead of duplicating them:
    - A Testbox warmed from `main` does not automatically carry a contributor PR's commit ancestry. For contributor-head gates, fetch and force-checkout `pull/<PR>/head` inside the box, then overlay only the reviewed maintainer repair files. Do not restore sparse omissions from current `main` onto a stale PR head; that can create lockfile and typecheck mismatches unrelated to the PR.
    - Squash contributor PRs unless the operator says otherwise.
    - The coordinator serializes GitHub comments, closes, pushes, and merges to avoid duplicated actions.
+   - Do not ask the operator to reconfirm a task-owned repair descendant that stays within the approved outcome. Do ask again for an externally changed head, an expanded risk class, or a maintainer/product decision that was not explicit in the candidate card and approval.
    - Clean up as each PR reaches a terminal state. After verifying the merge/close and stopping current-task Testbox/Crabbox leases, confirm no live process or operation lock owns the PR worktree, then remove it with `gwt` or native `git worktree`. Do not retain worktrees for ledger bookkeeping.
    - Remove blocked or carried worktrees too unless the next action is actively continuing in the current run. Recreate them later from the remote PR head instead of accumulating stale local state.
    - Never remove a worktree owned by another process, tmux pane, Codex session, or agent. Inspect live process cwd/locks first; if ownership is unclear, leave it and report the path.
@@ -136,6 +143,7 @@ Compose the repository skills instead of duplicating them:
 
 - `candidate_target`: default `20`, maximum `20`.
 - `approval_gate`: required.
+- `approval_action`: `approve` means start now and drive the approved execution-root ancestry to `landed`, `closed`, `rejected`, `blocked`, or `carried`; no separate kickoff is required.
 - `discovery_mode`: default `new-then-backlog`.
 - `repo`: default `openclaw/openclaw`.
 - `state_repo`: default `Patrick-Erichsen/openclaw-pr-sweep-state`.
@@ -149,7 +157,7 @@ Compose the repository skills instead of duplicating them:
 ## Outputs
 
 - Approval queue with up to 20 candidate cards and no padding.
-- Explicit operator decisions tied to exact head SHAs.
+- Explicit operator decisions tied to execution-root SHAs, with task-owned repair descendants recorded through the final exact head.
 - Per-PR evidence map, best-fix verdict, proof plan, and terminal action.
 - Exact worktree/branch ownership for active implementation lanes.
 - Landed PR URLs and SHAs, closed/rejected refs with reasons, CI/Testbox/Crabbox proof, and remaining blockers.

@@ -14,7 +14,7 @@ For each candidate, present:
 - Live mergeability and CI summary, including every failing or pending non-routine check.
 - Visible risk labels or policy warnings.
 - Estimated review cost: `small`, `medium`, or `large`.
-- Recommendation: `approve for review`, `decline`, or `needs operator judgment`.
+- Recommendation: `approve and land`, `decline`, or `needs operator judgment`.
 
 These are candidate cards, not code-review verdicts. Use `unknown` for facts that require code execution or owner-boundary analysis.
 
@@ -35,14 +35,14 @@ Write proposals to `decision-ledger.json.candidateQueue`:
 Allowed states:
 
 - `proposed`: waiting for operator decision.
-- `approved`: exact head may enter substantive qualification.
+- `approved`: the exact head becomes an execution root and automatically enters qualification, bounded repair, proof, and guarded landing.
 - `declined`: exact head will not be reviewed.
 - `deferred`: keep visible but take no action.
 - `delegated`: another named task owns the exact head.
 - `superseded`: the head changed after the recorded decision.
 
-An approval covers only the recorded SHA. A changed head becomes a new proposal. Terminal ledger categories remain terminal regardless of candidate-queue state.
+An approval covers the recorded execution-root SHA and coordinator-reviewed, task-owned repair descendants of that SHA. Record each execution head and require all landing gates on the final immutable head. A contributor, bot, or other external head change becomes a new proposal. Terminal ledger categories remain terminal regardless of candidate-queue state.
 
 ## Approval boundary
 
-Before approval, stay in metadata screening. After approval, refresh the live head and follow the full qualification, proof, repair, and landing workflow. The private state repository is the workflow tracker; make no Linear calls or issues.
+Before approval, stay in metadata screening. After approval, refresh the live head and immediately follow the full qualification, proof, repair, and landing workflow without asking for another kickoff or merge confirmation. Pause only for an externally changed head, a newly discovered policy/product decision, or a risk expansion outside the approved outcome. The private state repository is the workflow tracker; make no Linear calls or issues.
