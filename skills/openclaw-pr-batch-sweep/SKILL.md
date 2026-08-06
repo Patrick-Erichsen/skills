@@ -5,7 +5,7 @@ license: MIT
 metadata:
   source: "https://github.com/Patrick-Erichsen/skills/tree/main/skills/openclaw-pr-batch-sweep"
   upstream: "https://github.com/vincentkoc/dotskills/tree/main/skills/openclaw-pr-batch-sweep"
-  version: "0.6.0"
+  version: "0.6.1"
   spec: agentskills-v1
 ---
 
@@ -129,6 +129,11 @@ Choose the mode before candidate work:
    - Run all contributor-head code execution in Testbox/Crabbox. Use local repository wrappers only for coordinator-reviewed, maintainer-owned reconstructions that cannot invoke contributor-controlled setup or hooks.
 
 7. Review and land serially.
+   - Public outcome is a completion gate for every operator-approved PR that reaches substantive qualification or review. Pre-approval declines and metadata-only skips remain private unless the operator requests otherwise.
+   - Immediately before posting, refresh the open PR and exact reviewed head. If another actor changed the head, post nothing based on the stale review; mark it superseded and return the new head for operator approval.
+   - Post one concise maintainer outcome tied to the exact reviewed head: `approved/landing` with proof and remaining mechanical gates; `changes requested` with actionable findings and the desired owner-boundary fix; `carried/blocked` with the concrete blocker and next action; or `rejected` with evidence and the safe alternative. Use a submitted review when the outcome maps cleanly to GitHub review state, otherwise a maintainer comment.
+   - Deduplicate against existing maintainer feedback for the same head and outcome. Never expose private ledger data, local paths, credentials, remote host details, or raw untrusted logs.
+   - Record `publicOutcome`, `publicOutcomeHeadSha`, and `publicOutcomeUrl` in the terminal or active execution entry. An approved reviewed PR is not terminally `rejected`, `blocked`, or `carried` until that public outcome exists, unless the PR closed or merged before posting; record that exact exception instead.
    - Run fresh `$autoreview` on the final head until no accepted/actionable findings remain.
    - Require exact-head focused proof, relevant CI, clean mergeability, and resolved review threads.
    - Approval authorizes landing, but never bypasses a repository safety gate. Land automatically only when every required gate covers the final immutable execution head.
@@ -186,6 +191,7 @@ Choose the mode before candidate work:
 - In `manifest`, a lane-local proposal queue, operator decisions, execution outcomes, and dispatcher notification without global cursor mutation.
 - Explicit operator decisions tied to execution-root SHAs, with task-owned repair descendants recorded through the final exact head.
 - Per-PR evidence map, best-fix verdict, proof plan, and terminal action.
+- Exact-head public maintainer outcome URL for every approved PR that reached substantive review.
 - Exact worktree/branch ownership for active implementation lanes.
 - Landed PR URLs and SHAs, closed/rejected refs with reasons, CI/Testbox/Crabbox proof, and remaining blockers.
 - Clean current `main` status after landing work.
