@@ -79,6 +79,7 @@ let proposalMode = false;
 const terminalDecisions = new Map();
 const carriedHeads = new Map();
 const queuedHeads = new Map();
+const reservedPrs = new Map();
 
 function parsePrNumber(value) {
   const trimmed = value.trim();
@@ -198,6 +199,28 @@ if (decisionLedgerPath) {
     if (status !== "superseded") {
       queuedHeads.set(number, { headSha: headSha.toLowerCase(), status });
     }
+  }
+  const activeReservations = ledger.activeReservations ?? [];
+  if (!Array.isArray(activeReservations)) {
+    throw new Error("Decision ledger field activeReservations must be an array");
+  }
+  for (const entry of activeReservations) {
+    if (typeof entry !== "object" || entry === null) {
+      throw new Error("Active reservations must include number, headSha, runId, and laneId");
+    }
+    const number = parsePrNumber(String(entry.number ?? entry.ref ?? entry.url ?? ""));
+    const headSha = String(entry.headSha ?? entry.head_sha ?? "").trim();
+    const runId = String(entry.runId ?? "").trim();
+    const laneId = String(entry.laneId ?? "").trim();
+    if (
+      number === null ||
+      !/^[0-9a-f]{40}$/i.test(headSha) ||
+      !runId ||
+      !laneId
+    ) {
+      throw new Error(`Invalid active reservation: ${JSON.stringify(entry)}`);
+    }
+    reservedPrs.set(number, { runId, laneId });
   }
 }
 
@@ -360,6 +383,7 @@ function isOverlapEligible(pr) {
   if (pr.isDraft ?? pr.is_draft ?? pr.draft) return false;
   if (pr.state && String(pr.state).toUpperCase() !== "OPEN") return false;
   if (terminalDecisions.has(Number(pr.number))) return false;
+  if (reservedPrs.has(Number(pr.number))) return false;
   if (pr.maintainerParticipationChecked !== true) return false;
   if (Array.isArray(pr.maintainerInteractions) && pr.maintainerInteractions.length > 0) {
     return false;
@@ -607,6 +631,10 @@ function analyze(pr) {
   }
   const terminalDecision = terminalDecisions.get(Number(pr.number));
   if (terminalDecision) reasons.push(terminalDecision);
+  const reservation = reservedPrs.get(Number(pr.number));
+  if (reservation) {
+    reasons.push(`reserved by parallel run ${reservation.runId}/${reservation.laneId}`);
+  }
   const carriedHead = carriedHeads.get(Number(pr.number));
   if (carriedHead && currentHead && carriedHead === currentHead) {
     reasons.push("previously carried at unchanged head");
