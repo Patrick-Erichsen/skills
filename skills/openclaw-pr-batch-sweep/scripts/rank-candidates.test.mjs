@@ -1055,6 +1055,37 @@ test("excludes a queued proposal only while its exact head is unchanged", () => 
   }
 });
 
+test("excludes a PR reserved by a parallel tranche regardless of head changes", () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "openclaw-pr-ledger-"));
+  const ledgerPath = path.join(directory, "ledger.json");
+  writeFileSync(
+    ledgerPath,
+    JSON.stringify({
+      activeReservations: [
+        {
+          number: 12345,
+          headSha: "abcdef1234567890abcdef1234567890abcdef12",
+          runId: "2026-08-05-parallel-150",
+          laneId: "lane-01",
+        },
+      ],
+    }),
+  );
+
+  try {
+    const output = runHydratedArgs(
+      hydratedPr({ headRefOid: "fedcba0987654321fedcba0987654321fedcba09" }),
+      ["--proposal-mode", "--decision-ledger", ledgerPath],
+    );
+    assert.equal(output.selected.length, 0);
+    assert.deepEqual(output.rejected[0].reasons, [
+      "reserved by parallel run 2026-08-05-parallel-150/lane-01",
+    ]);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("proposal mode keeps failing CI visible as a warning", () => {
   const output = runHydratedArgs(
     hydratedPr({
