@@ -28,8 +28,8 @@ The lane is the sole writer of `runs/<run_id>/lane-<n>.json`. It must:
 1. Verify `runId`, `laneId`, repository, entry count, and `manifestHash` before reading GitHub.
 2. Set status to `screening`, refresh every assigned PR at its exact head, and run the standard filtering process only over those entries.
 3. Persist screened rejections and candidate cards in its file, then set `awaiting-approval` and stop for operator decisions in that lane thread.
-4. Record approvals against exact heads. Continue automatically through qualification, repair, proof, and landing for approved heads.
-5. Keep all PR-specific GitHub mutations, worktrees, remote leases, and exact-head evidence inside the lane. Update the lane after every terminal outcome.
+4. Record approvals against exact heads. Create per-PR durable checkpoints and continue automatically through qualification, repair, proof, and coordinator-owned landing for approved heads.
+5. The lane coordinator owns all PR-specific GitHub mutations. Workers return frozen packages and never mutate GitHub. Keep worktrees, remote leases, and exact-head evidence inside the lane, and update the checkpoint after every state transition.
 6. Push lane updates with at most three pull-rebase retries. Because lanes own separate files, a conflict in another file is a dispatcher blocker, not permission to overwrite it.
 7. Notify the dispatcher when the approval queue is ready and again when the lane reaches `complete`, `blocked`, or `carried`. Routine progress stays in the lane thread.
 
