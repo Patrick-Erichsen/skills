@@ -104,9 +104,9 @@ if (args[0] === "api" && args[1] === "repos/openclaw/openclaw/pulls/42") {
 
     const calls = readFileSync(logPath, "utf8").trim().split("\n");
     assert.equal(calls.length, 7);
-    assert.equal(calls[0], "api repos/openclaw/openclaw/pulls/42");
-    assert.match(calls[1], /files\?per_page=25&page=1/);
-    assert.match(calls[2], /^pr view 42 /);
+    assert.match(calls[0], /^pr view 42 /);
+    assert.equal(calls[1], "api repos/openclaw/openclaw/pulls/42");
+    assert.match(calls[2], /files\?per_page=25&page=1/);
     assert.equal(calls[3], "api repos/openclaw/openclaw/pulls/42");
     assert.match(calls[4], /issues\/42\/comments\?per_page=25&page=1/);
     assert.match(calls[5], /pulls\/42\/reviews\?per_page=25&page=1/);
@@ -207,6 +207,88 @@ if (args[0] === "api" && args[1] === "repos/openclaw/openclaw/pulls/43") {
     assert.equal(readFileSync(countPath, "utf8"), "4");
     assert.match(result.stderr, /transient failure; retry 4\/5 in 0ms/);
     assert.match(result.stderr, /hydrate #44 remained unavailable.*continuing/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("preflights live state and continues past closed or missing PRs", () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "openclaw-hydrate-preflight-"));
+  const inputPath = path.join(directory, "ranked.json");
+  const fakeGhxPath = path.join(directory, "fake-ghx.mjs");
+  const logPath = path.join(directory, "calls.log");
+
+  writeFileSync(inputPath, JSON.stringify([{ number: 46 }, { number: 47 }, { number: 48 }]));
+  writeFileSync(
+    fakeGhxPath,
+    `#!/usr/bin/env node
+import fs from "node:fs";
+const args = process.argv.slice(2);
+fs.appendFileSync(process.env.CALL_LOG, args.join(" ") + "\\n");
+const endpoint = args[1] ?? "";
+if (args[0] === "pr" && args[1] === "view") {
+  const number = Number(args[2]);
+  if (number === 47) {
+    console.error("gh: Not Found (HTTP 404)");
+    process.exit(1);
+  }
+  console.log(JSON.stringify({
+    number,
+    state: number === 46 ? "CLOSED" : "OPEN",
+    isDraft: false,
+    url: \`https://github.com/openclaw/openclaw/pull/\${number}\`,
+    author: { login: "contributor" },
+    labels: [],
+    statusCheckRollup: [],
+    mergeStateStatus: "CLEAN",
+    headRefOid: \`head-\${number}\`,
+    additions: 4,
+    deletions: 2,
+    changedFiles: 1
+  }));
+} else if (args[0] === "api" && endpoint === "repos/openclaw/openclaw/pulls/48") {
+  console.log(JSON.stringify({
+    number: 48,
+    state: "open",
+    draft: false,
+    changed_files: 1,
+    mergeable: true,
+    mergeable_state: "clean",
+    user: { login: "contributor" }
+  }));
+} else if (args[0] === "api" && endpoint.includes("/files?")) {
+  console.log(JSON.stringify([{ filename: "src/example.ts", additions: 4, deletions: 2 }]));
+} else if (args[0] === "api" && (endpoint.includes("/comments?") || endpoint.includes("/reviews?"))) {
+  console.log("[]");
+} else {
+  process.exitCode = 2;
+}
+`,
+  );
+  chmodSync(fakeGhxPath, 0o755);
+
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [scriptPath, "--input", inputPath, "--sleep-ms", "0"],
+      {
+        encoding: "utf8",
+        env: { ...process.env, GHX_BIN: fakeGhxPath, CALL_LOG: logPath },
+      },
+    );
+
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output[0].hydrationSkipped, "not-open");
+    assert.equal(output[1].hydrationSkipped, "not-found");
+    assert.equal(output[2].number, 48);
+    assert.equal(output[2].hydrationComplete, undefined);
+    assert.match(result.stderr, /hydrate #47 remained stale or missing.*continuing/);
+
+    const calls = readFileSync(logPath, "utf8").trim().split("\n");
+    assert.equal(calls.filter((call) => call.includes("pulls/46")).length, 0);
+    assert.equal(calls.filter((call) => call.includes("pulls/47")).length, 0);
+    assert.ok(calls.some((call) => call === "api repos/openclaw/openclaw/pulls/48"));
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

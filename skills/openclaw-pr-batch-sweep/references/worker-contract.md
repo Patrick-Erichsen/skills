@@ -68,8 +68,8 @@ Requirements:
 - Local execution is allowed only after the coordinator has reviewed and reconstructed a trusted maintainer-owned patch that excludes contributor-controlled setup and hooks; remote proof remains the default.
 - Run fresh autoreview after the final diff.
 - Keep every task-owned repair commit descended from the approved execution root and report the complete root-to-final head chain.
-- When the coordinator delegates editable-fork synchronization, keep it inside OpenClaw's native PR wrapper. If GraphQL exceeds its payload limit after a rebase, use the wrapper's lease-checked git mode only with explicit coordinator delegation.
-- Do not comment, push, close, or merge unless the coordinator explicitly delegates that mutation.
+- Create local repair commits only. The coordinator owns editable-fork synchronization through OpenClaw's native PR wrapper.
+- Return the frozen implementation package from `execution-control.md`. Do not comment, push, close, label, rebase a remote branch, or merge.
 
 Return:
 
@@ -77,6 +77,7 @@ Return:
 PR:
 worktree:
 branch/head:
+approved root/tree hash/diff hash:
 repro:
 root cause:
 files changed:
@@ -86,23 +87,25 @@ autoreview:
 CI:
 remaining findings:
 recommended action:
-GitHub mutations performed:
+githubMutationsPerformed: []
+cleanup requirements:
 ```
 
 ## Coordinator Rules
 
 - Keep at most one worker per PR and one PR per worktree.
-- Use two retained qualification workers and one retained implementation worker by default. Reassign them as work finishes instead of spawning replacements.
+- Use two retained qualification workers. Use one retained implementation worker for 1-3 independent approvals and two for 4 or more. Reassign them as work finishes instead of spawning replacements.
 - Do not exceed two qualification workers unless the operator explicitly raises concurrency. Never exceed two active implementation workers.
 - Run discovery and hydration shell calls serially. Traverse REST collections one page at a time with `per_page=25`; do not parallelize `gitcrawl`, `ghx`, or per-PR hydration calls.
 - On `EMFILE`, `Too many open files`, or equivalent process-launch failure, stop spawning workers and parallel shells immediately. Let retained lanes finish, then continue with one coordinator shell call at a time.
 - Keep qualification read-only.
-- Serialize comments, branch pushes, closes, and merges.
+- The coordinator is the sole GitHub mutator. Serialize mutations within one PR and serialize every merge globally.
 - After each merge, close, or other terminal decision, stop current-task remote leases and remove that PR's isolated worktree once no live process or operation lock owns it. Do not keep terminal worktrees until batch closeout.
 - Remove carried/blocked worktrees unless work is actively continuing in the current run; recreate from the remote PR head when resumed.
 - Never remove a worktree owned by another process, tmux pane, Codex session, or agent. If ownership is unclear, leave it in place and report it.
 - For editable-fork sync, use `${OPENCLAW_ROOT}/scripts/pr prepare-sync-head`. A GraphQL payload-limit fallback may set `OPENCLAW_PR_PUSH_MODE=git OPENCLAW_ALLOW_UNSIGNED_GIT_PUSH=1`; never replace the wrapper with a raw push.
 - When a Testbox starts from `main`, reconstruct the exact contributor head with `pull/<PR>/head` before gates and overlay only reviewed maintainer repair files. Never fill sparse omissions from a newer `main` tree onto the contributor head.
 - Recheck live state immediately before every mutation.
-- Once the operator approves an execution root, continue through necessary coordinator-delegated repair, push, review, and landing mutations without requesting another kickoff. Stop for external head changes or newly discovered decisions outside the approved outcome.
+- Once the operator approves an execution root, continue through repair, coordinator-owned push, review, and landing mutations without requesting another kickoff. Stop for external head changes or newly discovered decisions outside the approved outcome.
 - Do not merge a result based only on a worker summary; inspect the final diff and proof.
+- Reuse a retained read-only qualification worker for independent final verification. The implementation worker cannot verify its own landing package.

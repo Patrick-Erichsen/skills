@@ -1,11 +1,11 @@
 ---
 name: openclaw-pr-batch-sweep
-description: Find OpenClaw PR candidates for operator approval, then automatically review, repair, validate, and land approved work. Supports the normal single queue and explicitly requested parallel tranches in separate persistent Codex threads.
+description: Find OpenClaw PR candidates for operator approval, then run durable, coordinator-owned review, repair, validation, and landing. Supports one queue and explicitly requested parallel tranches.
 license: MIT
 metadata:
   source: "https://github.com/Patrick-Erichsen/skills/tree/main/skills/openclaw-pr-batch-sweep"
   upstream: "https://github.com/vincentkoc/dotskills/tree/main/skills/openclaw-pr-batch-sweep"
-  version: "0.6.1"
+  version: "0.7.0"
   spec: agentskills-v1
 ---
 
@@ -15,6 +15,8 @@ metadata:
 
 Drive a continuing queue of useful OpenClaw contributor PRs through two explicit phases: build a 20-item proposal queue for operator approval, then automatically review, repair, prove, and land approved work. Approval is the execution kickoff, not merely permission to inspect code. Focused micro-PRs, UI work, and docs changes are eligible.
 
+The current user-facing task owns standard-mode execution. It keeps durable per-PR checkpoints, resumes after worker or tool interruption, and remains active until every approved PR is landed or has a concrete terminal outcome. Implementation workers prepare immutable evidence packages; only the coordinator mutates GitHub or invokes a merge.
+
 Default to one standard queue. When the operator explicitly requests parallel tranches, reserve one immutable discovery snapshot, divide it into non-overlapping manifests, and open one persistent Codex thread per manifest. Each lane runs this same approval-through-landing workflow independently; the dispatcher only coordinates reservations, threads, and reconciliation.
 
 Exclude PRs that already received human participation from an OpenClaw maintainer. Existing maintainer involvement means the PR is already in another maintainer's funnel and should not consume this discovery queue.
@@ -22,6 +24,7 @@ Exclude PRs that already received human participation from an OpenClaw maintaine
 Requires `gh`, `gitcrawl`, and the OpenClaw maintainer, testing, autoreview, Crabbox, and ClawSweeper skills. Use `ghx` and `gwt` when available; fall back to `gh`/REST and native Git worktrees when absent. The private sweep-state repository is the only coordination ledger; this workflow creates no Linear work.
 
 Read [references/operator-selection-policy.md](references/operator-selection-policy.md) before selecting candidates. Read [references/candidate-approval.md](references/candidate-approval.md) before presenting or acting on candidates. Read [references/worker-contract.md](references/worker-contract.md) before spawning sub-agents after approval.
+Read [references/execution-control.md](references/execution-control.md) when an exact head is approved or when recovering interrupted execution.
 Read [references/parallel-tranches.md](references/parallel-tranches.md) only for `parallel-tranches` or `manifest` mode.
 Read and update the canonical ledger in the private `Patrick-Erichsen/openclaw-pr-sweep-state` repository so fresh runs inherit prior screened, carried, landed, rejected, closed, and explicitly skipped PRs.
 
@@ -55,10 +58,12 @@ Choose the mode before candidate work:
 
 1. Recover the proposal and execution queues.
    - Read recent thread state and clone or refresh `Patrick-Erichsen/openclaw-pr-sweep-state` in a task-owned isolated checkout.
+   - In `standard` mode, this user-facing task is the control plane. Continue here unless the operator explicitly delegates execution to another persistent task.
    - Set `DECISION_LEDGER` to that checkout's `decision-ledger.json`. Never update Vincent's upstream ledger or an installed skill copy.
    - Preflight `gh`, `gitcrawl`, optional `ghx`, and repository skills before candidate work. Defer worktrees and remote proof providers until an exact head is approved.
    - Read `auditWatermark.openPrThrough` as the forward-edge cursor and `backlogCursor.nextPrBefore` as the independent older-backlog cursor. Never move the forward watermark backward.
    - Read `candidateQueue`. An unchanged `proposed`, `approved`, `declined`, `deferred`, or `delegated` head does not re-enter discovery. Resume unchanged approved entries automatically. A materially changed head returns as a new proposal; terminal ledger entries never re-enter.
+   - Create or recover the durable run and per-PR checkpoints defined in `references/execution-control.md`. Resume each approved PR from its first incomplete state without waiting for an operator prompt.
    - Read `activeReservations`. Every reserved PR number stays out of standard discovery until its parallel run is reconciled or explicitly abandoned. A stale lease fails closed and is reported; elapsed time alone never releases a reservation.
    - Verify current `main`, live PR state, repo instructions, `VISION.md`, disk, and worktree health.
    - Keep a handled set containing merged, closed, rejected, ignored, draft, and explicitly skipped PRs.
@@ -67,6 +72,7 @@ Choose the mode before candidate work:
 2. Build a proposal queue of 20 candidates.
    - In `manifest` mode, use the lane file as the complete discovery input. Never query beyond, refill, exchange, or reorder its assigned PRs. Refresh each assigned head before screening; record external head changes as `superseded` in the lane file rather than substituting another PR.
    - Start with `gitcrawl`; verify live state with `ghx` when installed, otherwise `gh`. If `gitcrawl` is stale, malformed, or unavailable, fall through immediately to live REST through the available GitHub CLI.
+   - Run the cheap live open/head preflight before files, comments, reviews, checks, or mergeability hydration. Skip closed or missing rows, record stale `404` rows as incomplete, and continue the same pass without restarting it.
    - Run discovery and hydration shell calls serially on the maintainer host. Do not fan out `gitcrawl`, `ghx`, or per-PR REST calls in parallel.
    - Resolve operator-provided PRs and issues first. For an issue, check for an existing open repair PR and collapse the pair into one candidate instead of proposing a duplicate implementation.
    - Scan PRs newer than `auditWatermark.openPrThrough`, then continue backward from `backlogCursor.nextPrBefore`. Fetch in bounded pages until 20 candidates are proposed or 1000 live open PRs have been inspected. Exhaustion may return fewer than 20; never pad.
@@ -74,6 +80,7 @@ Choose the mode before candidate work:
    - Combine `handled_refs` and `explicit_skips` into comma-separated `HANDLED_PRS`. Numbers, `#123`, and full pull-request URLs are accepted.
    - Run `scripts/rank-candidates.mjs --input "$OPEN_PRS_JSON" --limit 100 --batch-size 20 --proposal-mode --decision-ledger "$DECISION_LEDGER" --exclude "$HANDLED_PRS"` as a first-pass noise filter.
    - Set `HYDRATED_PRS_JSON` to a second JSON file, then hydrate the top 30-40 with `scripts/hydrate-candidates.mjs --input <ranked.json> --output "$HYDRATED_PRS_JSON"`. It serially merges authoritative REST author association, file count, merge state, paginated file deltas, and live check rollups while retrying unresolved mergeability.
+   - After approval, refresh only the active PR's complete source surface. Do not rehydrate the global open-PR set before a PR-specific proof, review, push, or merge action.
    - During hydration, inspect every page of top-level PR comments, submitted reviews, and inline review comments. Ignore bots and the PR author. Load the live repository collaborator-permission map once per run, then record participating humans with `write`, `maintain`, or `admin` access in `maintainerInteractions`.
    - Hard-reject any hydrated PR with a non-empty `maintainerInteractions` list. Also reject candidates when the participation check is incomplete; never assume missing comment evidence means no maintainer has participated.
    - If process launch returns `EMFILE`, `Too many open files`, or another file-descriptor exhaustion error, stop spawning workers and parallel shells immediately. Let retained lanes finish, then continue from the coordinator with one shell call at a time.
@@ -109,12 +116,14 @@ Choose the mode before candidate work:
    - Require the return schema in `references/worker-contract.md`.
 
 5. Promote only qualified, approved PRs into implementation lanes.
-   - Use one retained implementation worker by default and never exceed two active implementation workers.
+   - Use one retained implementation worker for 1-3 independent approved PRs and two for 4 or more. Never exceed two active implementation workers.
    - Reassign the retained worker as each PR finishes.
    - Use one isolated worktree per PR through `gwt` when installed or native `git worktree` otherwise. Never share a worktree between agents.
    - Prefer repairing the contributor PR when maintainers can edit it.
    - Close or replace only after the coordinator verifies the evidence and repository policy.
    - As a lane finishes, assign the next qualified PR from the same batch.
+   - When a PR waits on CI, provider allocation, or ClawSweeper, record the matching waiting blocker in its checkpoint and give the worker another qualified PR. External waiting must not block unrelated review or proof work.
+   - Workers make local repair commits and return the frozen package in `references/worker-contract.md`. They never comment, push, close, label, rebase a remote branch, or merge.
    - Continue automatically. Pause only when the best fix expands beyond the approved PR's stated outcome into a product, security, migration, SDK, config, protocol, or broad architectural decision.
 
 6. Prove and narrow each PR.
@@ -127,6 +136,7 @@ Choose the mode before candidate work:
    - Reject the PR if the clean fix becomes a product, security, migration, SDK, config, or broad architecture decision.
    - If autoreview or dependency inspection reveals that a selected change requires terminal sanitization, trust-boundary hardening, permission changes, or a wider security sweep, stop the implementation lane and reclassify the PR out of the batch. Do not expand through adjacent untrusted fields merely to make autoreview quiet. If another maintainer later finishes it, record it as `handledMerged`, not a future selection precedent.
    - Run all contributor-head code execution in Testbox/Crabbox. Use local repository wrappers only for coordinator-reviewed, maintainer-owned reconstructions that cannot invoke contributor-controlled setup or hooks.
+   - Use the exact-head reconstruction contract in `references/execution-control.md`: freeze the base, fetch the approved PR head, overlay only reviewed repair commits, set test-only Git identity, exclude dependency mounts from destructive sync, and emit machine-readable proof. Allow one setup retry and one provider fallback; then checkpoint a concrete infrastructure blocker instead of repeating reconstruction loops.
 
 7. Review and land serially.
    - Public outcome is a completion gate for every operator-approved PR that reaches substantive qualification or review. Pre-approval declines and metadata-only skips remain private unless the operator requests otherwise.
@@ -136,15 +146,18 @@ Choose the mode before candidate work:
    - Record `publicOutcome`, `publicOutcomeHeadSha`, and `publicOutcomeUrl` in the terminal or active execution entry. An approved reviewed PR is not terminally `rejected`, `blocked`, or `carried` until that public outcome exists, unless the PR closed or merged before posting; record that exact exception instead.
    - Run fresh `$autoreview` on the final head until no accepted/actionable findings remain.
    - Require exact-head focused proof, relevant CI, clean mergeability, and resolved review threads.
+   - Reuse a retained read-only qualification worker as the independent final verifier. It verifies the frozen final tree, accepted findings, exact-head gates, review threads, and cleanup plan, then returns a machine-readable verdict.
    - Approval authorizes landing, but never bypasses a repository safety gate. Land automatically only when every required gate covers the final immutable execution head.
    - Read the latest ClawSweeper review immediately before landing. If its installation hits a rate limit, honor the reset, retry only the failed exact item once after recovery, and carry the PR rather than creating a retry storm or bypassing the gate.
+   - Resolve ClawSweeper to one exact-head record containing the durable comment URL, reviewed SHA, verdict, and every rank-up move. An ambiguous or stale record is a waiting checkpoint, not a clean gate.
    - Use OpenClaw's repository-native PR review/prepare/merge wrapper from the trusted canonical `main` checkout, never a contributor-modified copy.
    - If exact-head CI exposes a deterministic failure already fixed independently on current `main`, verify the touched paths do not overlap, rebase through the native wrapper, and rerun exact-head CI. Do not copy the unrelated main fix into the contributor diff.
    - If an exact-SHA release-gate fallback exposes a failure in a path byte-identical to current `main`, record it as unrelated, cancel the current-task fallback, and keep waiting for the normal path-selected exact-head CI. Do not churn the contributor patch to repair unrelated full-suite debt.
    - Keep editable-fork synchronization inside OpenClaw's native PR wrapper. If `createCommitOnBranch` exceeds GitHub's payload limit after a rebase, retry `${OPENCLAW_ROOT}/scripts/pr prepare-sync-head <PR>` with `OPENCLAW_PR_PUSH_MODE=git OPENCLAW_ALLOW_UNSIGNED_GIT_PUSH=1`; require `maintainerCanModify=true`, the wrapper's exact lease, and an already reviewed prep branch. Do not raw-push around the wrapper.
    - A Testbox warmed from `main` does not automatically carry a contributor PR's commit ancestry. For contributor-head gates, fetch and force-checkout `pull/<PR>/head` inside the box, then overlay only the reviewed maintainer repair files. Do not restore sparse omissions from current `main` onto a stale PR head; that can create lockfile and typecheck mismatches unrelated to the PR.
    - Squash contributor PRs unless the operator says otherwise.
-   - The coordinator serializes GitHub comments, closes, pushes, and merges to avoid duplicated actions.
+   - The coordinator is the only GitHub mutator. It inspects the frozen worker package, performs pushes and review actions, assembles the landing package, and personally invokes the trusted `scripts/pr` merge command. When repository tooling supports a single-use merge token, bind it to the PR, final SHA, proof-package hashes, operation, and expiry.
+   - Serialize mutations within each PR and serialize all merges globally. A waiting PR does not prevent coordinator work on another PR.
    - Do not ask the operator to reconfirm a task-owned repair descendant that stays within the approved outcome. Do ask again for an externally changed head, an expanded risk class, or a maintainer/product decision that was not explicit in the candidate card and approval.
    - Clean up as each PR reaches a terminal state. After verifying the merge/close and stopping current-task Testbox/Crabbox leases, confirm no live process or operation lock owns the PR worktree, then remove it with `gwt` or native `git worktree`. Do not retain worktrees for ledger bookkeeping.
    - Remove blocked or carried worktrees too unless the next action is actively continuing in the current run. Recreate them later from the remote PR head instead of accumulating stale local state.
@@ -152,8 +165,8 @@ Choose the mode before candidate work:
 
 8. Close the execution batch with a ledger.
    - Record each PR as `landed`, `closed`, `rejected`, `blocked`, or `carried`.
-   - Update `decision-ledger.json` in the canonical state repository. Preserve the proposal decision and record terminal execution decisions, explicit skips, and carried PRs with exact head SHAs.
-   - Write one append-only `runs/<date>-<slug>.json` outcome ledger for the batch.
+   - The coordinator reconciles completed per-PR checkpoints into `decision-ledger.json`. Workers never edit this global file. Preserve the proposal decision and record terminal execution decisions, explicit skips, and carried PRs with exact head SHAs.
+   - Preserve the durable run manifest and per-PR checkpoint files, then write the append-only terminal outcome ledger for the batch.
    - A screened or carried PR may re-enter when its exact head or material readiness state changes. Terminal merged, closed, superseded, or explicitly skipped PRs never re-enter.
    - After exhausting the live edge, advance `auditWatermark` with the highest authoritatively inspected open PR, UTC timestamp, and `origin/main` SHA. After an older-backlog page, move only `backlogCursor.nextPrBefore` to the oldest inspected PR number.
    - Include exact merge SHA, replacement/canonical PR, proof commands or run IDs, and cleanup links.
@@ -180,7 +193,7 @@ Choose the mode before candidate work:
 - `explicit_skips`: PR numbers or URLs the operator has excluded.
 - `provided_items`: operator-provided PR or issue URLs, proposed first.
 - `handled_refs`: merged, closed, rejected, ignored, delegated, or already-reviewed PRs.
-- `concurrency`: default `2` retained qualification workers and `1` retained implementation worker; maximum `2` implementation workers.
+- `concurrency`: `2` retained qualification workers; `1` implementation worker for 1-3 independent approvals and `2` for 4 or more; maximum `2` implementation workers.
 - `source_mode`: `discovery`, `provided-items`, or `combined`; default `combined`.
 - `risk_overrides`: explicit operator-approved exceptions only.
 
@@ -190,7 +203,9 @@ Choose the mode before candidate work:
 - In `parallel-tranches`, one durable reservation run and one verified persistent Codex thread per non-overlapping manifest.
 - In `manifest`, a lane-local proposal queue, operator decisions, execution outcomes, and dispatcher notification without global cursor mutation.
 - Explicit operator decisions tied to execution-root SHAs, with task-owned repair descendants recorded through the final exact head.
+- Durable per-PR checkpoints that survive worker, tool, and task interruptions.
 - Per-PR evidence map, best-fix verdict, proof plan, and terminal action.
+- Frozen implementation and landing packages with coordinator-owned mutation evidence.
 - Exact-head public maintainer outcome URL for every approved PR that reached substantive review.
 - Exact worktree/branch ownership for active implementation lanes.
 - Landed PR URLs and SHAs, closed/rejected refs with reasons, CI/Testbox/Crabbox proof, and remaining blockers.

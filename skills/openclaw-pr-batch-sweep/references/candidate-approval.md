@@ -47,4 +47,4 @@ An approval covers the recorded execution-root SHA and coordinator-reviewed, tas
 
 ## Approval boundary
 
-Before approval, stay in metadata screening. After approval, refresh the live head and immediately follow the full qualification, proof, repair, and landing workflow without asking for another kickoff or merge confirmation. Pause only for an externally changed head, a newly discovered policy/product decision, or a risk expansion outside the approved outcome. The private state repository is the workflow tracker; make no Linear calls or issues.
+Before approval, stay in metadata screening. After approval, the current task refreshes the live head, creates the durable execution checkpoint, and immediately follows the full qualification, proof, repair, and landing workflow without asking for another kickoff or merge confirmation. Resume interruptions from that checkpoint. Pause only for an externally changed head, a newly discovered policy/product decision, or a risk expansion outside the approved outcome. The private state repository is the workflow tracker; make no Linear calls or issues.

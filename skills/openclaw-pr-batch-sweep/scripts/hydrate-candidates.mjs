@@ -53,6 +53,7 @@ const commandEnv = {
 
 const transientFailurePattern =
   /(?:TLS handshake timeout|connection reset|connection refused|EOF|HTTP 5\d\d|server closed idle connection|temporary failure|timeout)/i;
+const notFoundFailurePattern = /(?:HTTP 404|Not Found|Could not resolve to a PullRequest)/i;
 const maxTransientAttempts = 5;
 let maintainerPermissionMap;
 
@@ -68,9 +69,12 @@ function runJson(commandArgs) {
     }
 
     const detail = result.stderr.trim() || result.stdout.trim();
+    const notFound = notFoundFailurePattern.test(detail);
     const transient = transientFailurePattern.test(detail);
     if (!transient) {
-      throw new Error(`${ghxBin} ${commandArgs.join(" ")} failed: ${detail}`);
+      const error = new Error(`${ghxBin} ${commandArgs.join(" ")} failed: ${detail}`);
+      error.notFound = notFound;
+      throw error;
     }
     if (attempt === maxTransientAttempts) {
       const error = new Error(`${ghxBin} ${commandArgs.join(" ")} failed: ${detail}`);
@@ -189,6 +193,29 @@ function hydrate(candidate) {
     throw new Error(`Invalid PR number: ${String(candidate.number)}`);
   }
 
+  const live = runJson([
+    "pr",
+    "view",
+    String(number),
+    "--repo",
+    repo,
+    "--json",
+    "number,state,isDraft,url,author,labels,statusCheckRollup,mergeStateStatus,headRefOid,additions,deletions,changedFiles",
+  ]);
+
+  if (String(live.state ?? "").toUpperCase() !== "OPEN") {
+    return {
+      ...candidate,
+      number,
+      state: live.state,
+      url: live.url ?? candidate.url,
+      headRefOid: live.headRefOid,
+      hydrationComplete: false,
+      hydrationSkipped: "not-open",
+      hydrationError: `PR is ${String(live.state ?? "not open").toLowerCase()}`,
+    };
+  }
+
   let rest = runJson(["api", `repos/${repo}/pulls/${number}`]);
 
   const files = [];
@@ -209,16 +236,6 @@ function hydrate(candidate) {
     );
     if (pageFiles.length < 25) break;
   }
-
-  const live = runJson([
-    "pr",
-    "view",
-    String(number),
-    "--repo",
-    repo,
-    "--json",
-    "number,state,isDraft,url,author,labels,statusCheckRollup,mergeStateStatus,headRefOid,additions,deletions,changedFiles",
-  ]);
 
   for (let attempt = 2; attempt <= 5 && unresolvedMergeability(rest); attempt += 1) {
     sleep(sleepMs);
@@ -264,13 +281,15 @@ for (const [index, candidate] of candidates.entries()) {
   try {
     hydrated.push(hydrate(candidate));
   } catch (error) {
-    if (!error?.transient) throw error;
+    if (!error?.transient && !error?.notFound) throw error;
+    const reason = error?.notFound ? "stale or missing" : "unavailable after transient retries";
     process.stderr.write(
-      `hydrate #${candidate.number} remained unavailable after transient retries; marking incomplete and continuing\n`,
+      `hydrate #${candidate.number} remained ${reason}; marking incomplete and continuing\n`,
     );
     hydrated.push({
       ...candidate,
       hydrationComplete: false,
+      hydrationSkipped: error?.notFound ? "not-found" : undefined,
       hydrationError: error.message,
     });
   }
