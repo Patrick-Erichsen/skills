@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, utimes, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -64,12 +65,34 @@ for (const explainer of explainers) {
 const discoveryTarget = join(output, ".well-known", "agent-skills");
 await mkdir(discoveryTarget, { recursive: true });
 const archivePath = join(discoveryTarget, "viz-explain.tar.gz");
-const archived = spawnSync("tar", ["-czf", archivePath, "."], {
-  cwd: skill,
+const archiveRoot = await mkdtemp(join(tmpdir(), "viz-explain-"));
+await cp(skill, archiveRoot, { recursive: true });
+const archivedFiles = await listFiles(archiveRoot);
+await Promise.all(
+  archivedFiles.map((file) => utimes(join(archiveRoot, file), new Date(0), new Date(0))),
+);
+const tarPath = archivePath.replace(/\.gz$/, "");
+const tarVersion = spawnSync("tar", ["--version"], { encoding: "utf8" }).stdout;
+const ownershipFlags = tarVersion.startsWith("bsdtar")
+  ? ["--uid", "0", "--gid", "0", "--uname", "root", "--gname", "root"]
+  : ["--owner=0", "--group=0", "--numeric-owner"];
+const archived = spawnSync("tar", [
+  "--format", "ustar",
+  ...ownershipFlags,
+  "-cf", tarPath,
+  ...archivedFiles.map((file) => `./${file}`),
+], {
+  cwd: archiveRoot,
   encoding: "utf8",
+  env: { ...process.env, COPYFILE_DISABLE: "1" },
 });
 if (archived.status !== 0) {
   throw new Error(`Could not archive viz-explain: ${archived.stderr}`);
+}
+const compressed = spawnSync("gzip", ["-n", "-9", tarPath], { encoding: "utf8" });
+await rm(archiveRoot, { recursive: true, force: true });
+if (compressed.status !== 0) {
+  throw new Error(`Could not compress viz-explain: ${compressed.stderr}`);
 }
 const archiveBytes = await readFile(archivePath);
 const digest = createHash("sha256").update(archiveBytes).digest("hex");
@@ -97,3 +120,18 @@ await writeFile(
 await writeFile(join(output, ".nojekyll"), "");
 
 console.log(`built ${explainers.length} explainers in ${output}`);
+
+async function listFiles(directory, prefix = "") {
+  const files = [];
+  const entries = await readdir(directory, { withFileTypes: true });
+  entries.sort((left, right) => left.name.localeCompare(right.name));
+  for (const entry of entries) {
+    const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      files.push(...await listFiles(join(directory, entry.name), relativePath));
+    } else if (entry.isFile()) {
+      files.push(relativePath);
+    }
+  }
+  return files;
+}
