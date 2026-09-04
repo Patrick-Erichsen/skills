@@ -12,9 +12,9 @@ work.
 - [`drive-to-completion`](skills/drive-to-completion): Monitor and drive a root issue and its subissues through implementation, review, and acceptance.
 - [`openclaw-pr-batch-sweep`](skills/openclaw-pr-batch-sweep): Select, review, repair, validate, and land bounded OpenClaw contributor PR batches with durable cross-run state.
 
-### Docs
+### Visualization
 
-- [`explain-architecture`](skills/explain-architecture): Research and explain a technical system through progressively detailed Excalidraw MCP App views.
+- [`viz-explain`](skills/viz-explain): Explain any subject visually with evidence-grounded Excalidraw MCP App views and reusable learning templates.
 
 ### Planning
 
