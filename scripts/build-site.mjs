@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, utimes, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { spawnSync } from "node:child_process";
-import { tmpdir } from "node:os";
+import { gzipSync } from "node:zlib";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -65,35 +64,8 @@ for (const explainer of explainers) {
 const discoveryTarget = join(output, ".well-known", "agent-skills");
 await mkdir(discoveryTarget, { recursive: true });
 const archivePath = join(discoveryTarget, "viz-explain.tar.gz");
-const archiveRoot = await mkdtemp(join(tmpdir(), "viz-explain-"));
-await cp(skill, archiveRoot, { recursive: true });
-const archivedFiles = await listFiles(archiveRoot);
-await Promise.all(
-  archivedFiles.map((file) => utimes(join(archiveRoot, file), new Date(0), new Date(0))),
-);
-const tarPath = archivePath.replace(/\.gz$/, "");
-const tarVersion = spawnSync("tar", ["--version"], { encoding: "utf8" }).stdout;
-const ownershipFlags = tarVersion.startsWith("bsdtar")
-  ? ["--uid", "0", "--gid", "0", "--uname", "root", "--gname", "root"]
-  : ["--owner=0", "--group=0", "--numeric-owner"];
-const archived = spawnSync("tar", [
-  "--format", "ustar",
-  ...ownershipFlags,
-  "-cf", tarPath,
-  ...archivedFiles.map((file) => `./${file}`),
-], {
-  cwd: archiveRoot,
-  encoding: "utf8",
-  env: { ...process.env, COPYFILE_DISABLE: "1" },
-});
-if (archived.status !== 0) {
-  throw new Error(`Could not archive viz-explain: ${archived.stderr}`);
-}
-const compressed = spawnSync("gzip", ["-n", "-9", tarPath], { encoding: "utf8" });
-await rm(archiveRoot, { recursive: true, force: true });
-if (compressed.status !== 0) {
-  throw new Error(`Could not compress viz-explain: ${compressed.stderr}`);
-}
+const archiveTar = await createTar(skill);
+await writeFile(archivePath, gzipSync(archiveTar, { level: 9, mtime: 0 }));
 const archiveBytes = await readFile(archivePath);
 const digest = createHash("sha256").update(archiveBytes).digest("hex");
 const description = skillMarkdown.match(/^description:\s*(.+)$/m)?.[1]?.trim();
@@ -134,4 +106,39 @@ async function listFiles(directory, prefix = "") {
     }
   }
   return files;
+}
+
+async function createTar(directory) {
+  const blocks = [];
+  for (const file of await listFiles(directory)) {
+    const name = `./${file}`;
+    if (Buffer.byteLength(name) > 100) {
+      throw new Error(`Archive path is too long for ustar: ${name}`);
+    }
+    const contents = await readFile(join(directory, file));
+    const header = Buffer.alloc(512);
+    writeString(header, name, 0, 100);
+    writeOctal(header, 0o644, 100, 8);
+    writeOctal(header, 0, 108, 8);
+    writeOctal(header, 0, 116, 8);
+    writeOctal(header, contents.length, 124, 12);
+    writeOctal(header, 0, 136, 12);
+    header.fill(0x20, 148, 156);
+    header[156] = "0".charCodeAt(0);
+    writeString(header, "ustar\0", 257, 6);
+    writeString(header, "00", 263, 2);
+    const checksum = header.reduce((sum, byte) => sum + byte, 0);
+    writeString(header, `${checksum.toString(8).padStart(6, "0")}\0 `, 148, 8);
+    blocks.push(header, contents, Buffer.alloc((512 - (contents.length % 512)) % 512));
+  }
+  blocks.push(Buffer.alloc(1024));
+  return Buffer.concat(blocks);
+}
+
+function writeString(buffer, value, offset, length) {
+  buffer.write(value, offset, length, "ascii");
+}
+
+function writeOctal(buffer, value, offset, length) {
+  writeString(buffer, `${value.toString(8).padStart(length - 1, "0")}\0`, offset, length);
 }
