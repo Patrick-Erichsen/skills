@@ -22,7 +22,7 @@
   {
     "slug": "request-sequence",
     "number": "03",
-    "name": "Request / interaction sequence",
+    "name": "Request and interaction sequence",
     "what": "A time-ordered trace showing who calls whom, what crosses each boundary, and where the response returns.",
     "when": "Use it for debugging a request, explaining control flow, or locating the exact handoff where latency or behavior changes.",
     "example": "A Telegram message moving through the OpenClaw channel adapter, Gateway, session, agent runtime, model, tools, and outbound delivery.",
@@ -32,7 +32,7 @@
   {
     "slug": "state-lifecycle",
     "number": "04",
-    "name": "State-machine lifecycle",
+    "name": "State lifecycle",
     "what": "A map of valid states, transition triggers, terminal outcomes, and the loops that return work to a safe state.",
     "when": "Use it when behavior depends more on lifecycle than component layout—jobs, sessions, approvals, retries, or connection state.",
     "example": "An OpenClaw scheduled job moving through scheduled, queued, running, retrying, completed, and failed states.",
@@ -72,7 +72,7 @@
   {
     "slug": "event-timeline",
     "number": "08",
-    "name": "Event timeline / history",
+    "name": "Event timeline and history",
     "what": "A chronological story that aligns events, state changes, and observable evidence across participants.",
     "when": "Use it for incidents, automation runs, migrations, or any question where ordering and elapsed time explain the outcome.",
     "example": "One OpenClaw automation tick from scheduler wake-up through isolated session creation, report generation, persistence, and Telegram announcement.",

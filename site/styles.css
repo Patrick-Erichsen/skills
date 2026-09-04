@@ -197,8 +197,10 @@ main { width: min(1360px, calc(100% - 48px)); margin: 0 auto; }
 .fact-label { margin: 0; color: var(--detail-accent); font-size: 0.74rem; font-weight: 850; letter-spacing: 0.12em; text-transform: uppercase; }
 .canvas-section { margin-top: 52px; border: 2px solid var(--line); border-radius: 20px; overflow: hidden; background: white; box-shadow: 7px 8px 0 var(--line); }
 .canvas-toolbar { min-height: 56px; padding: 10px 15px 10px 20px; border-bottom: 2px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 20px; background: var(--detail-wash); font-family: "Excalifont", sans-serif; font-size: 1.05rem; }
-.reset-button { appearance: none; border: 2px solid var(--line); border-radius: 10px 8px 11px 9px; padding: 8px 13px; background: var(--paper); color: var(--ink); font: 700 0.82rem/1 ui-rounded, sans-serif; cursor: pointer; box-shadow: 2px 2px 0 var(--line); }
-.reset-button:hover { transform: translateY(-1px); box-shadow: 3px 4px 0 var(--line); }
+.canvas-actions { display: flex; align-items: center; gap: 10px; }
+.canvas-button { appearance: none; border: 2px solid var(--line); border-radius: 10px 8px 11px 9px; padding: 8px 13px; background: var(--paper); color: var(--ink); font: 700 0.82rem/1 ui-rounded, sans-serif; cursor: pointer; box-shadow: 2px 2px 0 var(--line); }
+.canvas-button.copy-button { background: color-mix(in srgb, var(--detail-accent) 18%, var(--paper)); }
+.canvas-button:hover { transform: translateY(-1px); box-shadow: 3px 4px 0 var(--line); }
 .excalidraw-root { height: min(72vh, 760px); min-height: 580px; position: relative; }
 .canvas-loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-family: "Excalifont", sans-serif; font-size: 1.5rem; background: var(--paper); }
 
@@ -230,6 +232,7 @@ main { width: min(1360px, calc(100% - 48px)); margin: 0 auto; }
   .detail-number { font-size: 2.25rem; }
   .detail-facts { margin-top: 36px; }
   .canvas-toolbar { align-items: flex-start; flex-direction: column; }
+  .canvas-actions { width: 100%; flex-wrap: wrap; }
   .excalidraw-root { min-height: 520px; height: 68vh; }
   .edit-status { font-size: 0; }
   .edit-status .status-dot { display: block; }

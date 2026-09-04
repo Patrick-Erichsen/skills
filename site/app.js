@@ -69,6 +69,7 @@ async function renderDetail(items) {
   const { Excalidraw } = excalidrawModule;
   const root = createRoot(document.querySelector("#excalidraw-root"));
   let renderKey = 0;
+  let latestScene;
   const status = document.querySelector("#edit-status");
 
   const renderScene = () => {
@@ -85,6 +86,19 @@ async function renderDetail(items) {
           },
           files: scene.files ?? {},
           scrollToContent: true,
+        },
+        onChange: (elements, appState, files) => {
+          latestScene = {
+            type: "excalidraw",
+            version: 2,
+            source: window.location.href,
+            elements: structuredClone(elements),
+            appState: {
+              gridSize: appState.gridSize ?? null,
+              viewBackgroundColor: appState.viewBackgroundColor ?? "#fffdf8",
+            },
+            files: structuredClone(files),
+          };
         },
         UIOptions: {
           canvasActions: {
@@ -107,6 +121,21 @@ async function renderDetail(items) {
   document.querySelector("#reset-canvas").addEventListener("click", () => {
     renderScene();
     status.innerHTML = '<span class="status-dot"></span> Editable canvas';
+  });
+  document.querySelector("#copy-canvas").addEventListener("click", async (event) => {
+    if (!latestScene) return;
+    const prompt = [
+      "I corrected the viz-explain Excalidraw scene below.",
+      "Treat my edits as feedback to investigate, then update the explanation and its canonical scene.",
+      "",
+      JSON.stringify(latestScene),
+    ].join("\n");
+    await navigator.clipboard.writeText(prompt);
+    event.currentTarget.textContent = "Copied!";
+    status.innerHTML = '<span class="status-dot active"></span> Edit copied for agent';
+    window.setTimeout(() => {
+      event.currentTarget.textContent = "Copy edit for agent";
+    }, 1800);
   });
   renderScene();
 }

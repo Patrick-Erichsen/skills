@@ -14,7 +14,7 @@ work.
 
 ### Visualization
 
-- [`viz-explain`](skills/viz-explain): Explain any subject visually with evidence-grounded Excalidraw MCP App views and reusable learning templates.
+- [`viz-explain`](skills/viz-explain) ([gallery](https://patrick-erichsen.github.io/skills/)): Explain any subject visually with evidence-grounded Excalidraw MCP App views and reusable learning templates.
 
 ### Planning
 
