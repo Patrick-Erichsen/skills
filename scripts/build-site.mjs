@@ -65,7 +65,9 @@ const discoveryTarget = join(output, ".well-known", "agent-skills");
 await mkdir(discoveryTarget, { recursive: true });
 const archivePath = join(discoveryTarget, "viz-explain.tar.gz");
 const archiveTar = await createTar(skill);
-await writeFile(archivePath, gzipSync(archiveTar, { level: 9, mtime: 0 }));
+const archiveGzip = gzipSync(archiveTar, { level: 9, mtime: 0 });
+archiveGzip[9] = 3; // Normalize gzip's platform byte to Unix on every build host.
+await writeFile(archivePath, archiveGzip);
 const archiveBytes = await readFile(archivePath);
 const digest = createHash("sha256").update(archiveBytes).digest("hex");
 const description = skillMarkdown.match(/^description:\s*(.+)$/m)?.[1]?.trim();
