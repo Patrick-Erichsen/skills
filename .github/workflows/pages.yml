@@ -27,8 +27,13 @@ jobs:
           node-version: 22
       - run: node scripts/build-site.mjs
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
+      - name: Archive Pages artifact, including .well-known
+        run: tar --dereference --hard-dereference --directory .site-dist -cf "$RUNNER_TEMP/artifact.tar" .
+      - uses: actions/upload-artifact@v4
         with:
-          path: .site-dist
+          name: github-pages
+          path: ${{ runner.temp }}/artifact.tar
+          retention-days: 1
+          if-no-files-found: error
       - id: deployment
         uses: actions/deploy-pages@v4
