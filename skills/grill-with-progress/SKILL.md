@@ -1,6 +1,6 @@
 ---
 name: grill-with-progress
-description: Run Matt Pocock's grill-with-docs workflow with a temporary Markdown question ledger and a visible (n/N) prefix on every grilling message. Use when the user wants to grill or stress-test a plan, design, decision, or idea while seeing anticipated scope and progress.
+description: "Run Matt Pocock's grill-with-docs workflow with a temporary Markdown question ledger, ask the full anticipated question set in one batch, and show visible answer progress. Use when the user wants to grill or stress-test a plan, design, decision, or idea while seeing anticipated scope and progress."
 ---
 
 # Grill with Progress
@@ -10,6 +10,9 @@ it as the base workflow. Do not rely on implicit skill activation. Do not copy,
 edit, or replace its instructions. Apply the following progress-tracking
 contract in addition to the upstream behavior. If the upstream skill cannot be
 found, stop and tell the user.
+
+The batching contract below intentionally overrides any upstream instruction to
+ask one question at a time.
 
 ## Start the Ledger
 
@@ -30,8 +33,8 @@ Use this shape:
 ```markdown
 # Grill: <topic>
 
-- Status: active
-- Current position: 1/10
+- Status: awaiting answers
+- Answered: 0/10
 - Total anticipated questions: 10
 - Updated: <ISO-8601 timestamp>
 
@@ -41,8 +44,8 @@ Use this shape:
 
 ## Question checklist
 
-- [ ] **CURRENT Q1 (position 1/10).** <question>
-- [ ] Q2. <question>
+- [ ] **ASKED Q1.** <question> **Recommended:** <recommended answer>
+- [ ] **ASKED Q2.** <question> **Recommended:** <recommended answer>
 
 ## Removed questions
 
@@ -58,9 +61,14 @@ Use this shape:
 Update the file before every user-facing grilling message:
 
 - Mark an answered question `[x]` and append its answer and resulting decision.
-- Mark exactly one pending question as `CURRENT` and update `Current position`.
+- Update `Answered` to the number of resolved active questions.
+- Keep every unresolved question marked `ASKED`; there is no single `CURRENT`
+  question.
+- Keep each question and its recommended answer in the ledger so the file is
+  self-contained.
 - Add newly discovered questions to the checklist with when and why they were
-  added.
+  added, then ask all newly discovered and still-unresolved questions together
+  in the next grilling message.
 - Move removed questions to `Removed questions`; retain their text and record
   when and why they were removed. Mark them `[x]` and label them `Removed, not
   answered`.
@@ -68,26 +76,48 @@ Update the file before every user-facing grilling message:
   and reason.
 - Keep `Decisions` as a concise cumulative list.
 
-The denominator is the current number of active anticipated questions. The
-numerator is the current active question's position. Renumber active positions
-when the plan changes, while retaining stable `Q` identifiers and the change
-history.
+The denominator is the current number of active anticipated questions. Answer
+progress is the number of resolved active questions. Retain stable `Q`
+identifiers when the question set changes.
+
+## Render the Ledger
+
+The ledger is the source of truth for every user-facing grilling message.
+
+- After updating it, read the file and include its complete current contents
+  directly in the chat as rendered Markdown.
+- Do not wrap the ledger in a code fence, blockquote, or collapsible section.
+  Its headings, checklists, and lists must render normally in the conversation.
+- Do not replace the ledger with a summary, excerpt, separately reconstructed
+  question list, or file path.
+- Brief framing text may appear before the ledger when useful, but the full
+  ledger must still be shown.
+- The progress footer goes after the rendered ledger.
+- Show the complete final ledger after all decisions are resolved and again
+  when asking the user to confirm shared understanding.
 
 ## Show Progress
 
-Begin every user-facing message during the grill with exactly `(n/N)`, before
-any other text.
+End every user-facing message during the grill with one blank line followed by
+a standalone progress footer. The message shape is: optional brief framing,
+the complete ledger rendered directly as Markdown, then `(Answered n/N)` on its
+own final line.
 
-- Ask the first question with `(1/N)`.
-- After answering question 1 and advancing, ask question 2 with `(2/N)`.
-- If the total changes while on question 4, use the revised prefix such as
-  `(4/12)` and immediately explain the previous total, new total, and reason.
-- If replying without advancing, keep the current position in the prefix.
-- After the last answer, use `(N/N)` while asking the user to confirm shared
-  understanding and in the final grill-status message.
+- Put the complete initial question set and each recommended answer in the
+  ledger, show the whole file, and end with `(Answered 0/N)`.
+- After the user answers, show the updated resolved count, such as
+  `(Answered 6/10)`.
+- If the total changes, immediately explain the previous total, new total, and
+  reason, then use the revised denominator.
+- After the last answer, use `(Answered N/N)` while asking the user to confirm
+  shared understanding and in the final grill-status message.
 
 ## Preserve the Grill
 
-Ask one decision question at a time, include a recommended answer, and wait for
-the user's response. Research discoverable facts instead of asking the user.
-Do not begin implementation until the user confirms shared understanding.
+Put every anticipated decision question and its recommended answer in the
+ledger, then show the complete ledger at once. Do not stop after each question
+to wait for feedback. If the answers expose genuinely new decisions, add all
+remaining and new questions to the ledger and show the complete updated file in
+the next grilling message. Research discoverable facts instead of asking the
+user. Do not begin implementation until every decision is resolved and the user
+confirms shared understanding.
