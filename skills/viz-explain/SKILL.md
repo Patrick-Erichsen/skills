@@ -5,11 +5,10 @@ description: Explain any subject visually with evidence-grounded Excalidraw MCP 
 
 # Visual Explanation
 
-Turn the user's question into a visual learning loop: establish what they are
-trying to understand, research the subject, build one coherent model, render it
-with the official Excalidraw MCP App, and refine it conversationally. Use
-Excalidraw as the primary learning surface; the written explanation supports
-the view rather than replacing it.
+Turn the user's question into a visual learning loop: understand the learning
+goal, research the subject, build one coherent model, choose a visual grammar,
+render it with the official Excalidraw MCP App, and refine it conversationally.
+Use Excalidraw as the primary learning surface; prose supports the view.
 
 ## Preflight
 
@@ -47,20 +46,31 @@ Useful setup paths:
 1. Infer the subject, the user's learning goal, and the boundary that matters.
    The user may provide code, prose, a URL, a dataset, or only a question; use
    the sources appropriate to that subject.
-2. Choose the visual grammar that answers the question: for example a map,
-   flow, sequence, comparison, timeline, hierarchy, layered model, or spatial
-   layout. Treat `references/` as a library of learning-style templates. Read
-   only the relevant template before drawing; the
-   [architecture-levels template](references/architecture-levels.md) applies to
-   systems that need progressively more specific views.
+2. Choose the visual grammar that makes the important inference perceptual.
+   Read [visual-pedagogy.md](references/visual-pedagogy.md) when choosing or
+   combining patterns is ambiguous. Then read only the relevant explainer:
+
+   | User's question | Explainer |
+   | --- | --- |
+   | What exists around this system? | [Context and system landscape](references/system-landscape.md) |
+   | How does detail change as we zoom in? | [Progressive architecture zoom](references/progressive-architecture.md) |
+   | Who exchanges what, in what order? | [Request and interaction sequence](references/request-sequence.md) |
+   | Which states and transitions are valid? | [State lifecycle](references/state-lifecycle.md) |
+   | How does information change shape? | [Data transformation pipeline](references/data-transformation.md) |
+   | What depends on what, and where does it run? | [Dependency and deployment topology](references/dependency-topology.md) |
+   | Which responsibility belongs at each depth? | [Layered responsibility stack](references/layered-abstraction.md) |
+   | What happened when? | [Event timeline and history](references/event-timeline.md) |
+   | Where can it fail, and how does it recover? | [Failure and recovery paths](references/failure-recovery.md) |
+   | Which option fits these priorities? | [Decision and tradeoff matrix](references/decision-matrix.md) |
 3. Research before drawing. Build one canonical model with stable names,
    relationships, evidence, and visible uncertainty. Treat every view as a
    projection of that model, not as an unrelated illustration.
-4. Announce the visual plan briefly: what the view will answer, what becomes
-   visible, and what remains intentionally hidden. Choose the number of views or
-   levels from the subject; do not force a fixed count.
-5. Render the first useful Excalidraw App view. Design for inline readability,
-   keep labels short, and use spatial anchors so later views remain legible.
+4. Announce the visual plan briefly: what the view answers, what becomes visible,
+   and what stays hidden. Choose the number of views from the subject.
+5. Use the explainer's canonical `.excalidraw` scene as composition scaffolding,
+   not a stencil. Adapt layout, metaphor, grouping, and visual emphasis to the
+   subject while preserving the method's semantic boundary. Render the first
+   useful Excalidraw App view with short labels and stable spatial anchors.
 6. Explain the view in plain language with source paths, citations, or other
    evidence where they help the user verify it.
 7. Invite conversational refinement: expand, simplify, compare, trace, reorder,
