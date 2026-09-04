@@ -65,19 +65,25 @@ selected.each do |name|
   source = File.join(skills_root, name)
   target = File.join(options[:target], name)
 
+  if File.symlink?(target) && same_real_path?(source, target)
+    puts "linked #{name} -> #{target}"
+    next
+  end
+
   if File.exist?(target) || File.symlink?(target)
     unless options[:force]
       warn "exists, skipping: #{target}"
       next
     end
 
-    if !File.symlink?(target) && same_real_path?(source, target)
-      warn "target is source, skipping: #{target}"
-      next
+    if File.symlink?(target)
+      puts "remove #{target}" if options[:dry_run]
+      FileUtils.rm_f(target) unless options[:dry_run]
+    else
+      backup = "#{target}.backup.#{Time.now.strftime("%Y%m%d%H%M%S")}.#{Process.pid}"
+      puts "backup #{target} -> #{backup}"
+      FileUtils.mv(target, backup) unless options[:dry_run]
     end
-
-    puts "remove #{target}" if options[:dry_run]
-    FileUtils.rm_rf(target) unless options[:dry_run]
   end
 
   if options[:mode] == "symlink"
