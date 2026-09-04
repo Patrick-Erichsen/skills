@@ -7,9 +7,14 @@ work.
 
 ### Agent
 
-- [`codex-handoff`](skills/codex-handoff): Continue work in a persistent, pinned Codex thread with matching parent/child emoji and same-checkout delegation.
+- [`codex-handoff`](skills/codex-handoff): Continue one durable task in a verified, titled, pinned Codex thread.
 - [`clawhub-review-sweep`](skills/clawhub-review-sweep): Review and durably track every open ClawHub issue and pull request in a private approval-gated ledger.
+- [`drive-to-completion`](skills/drive-to-completion): Monitor and drive a root issue and its subissues through implementation, review, and acceptance.
 - [`openclaw-pr-batch-sweep`](skills/openclaw-pr-batch-sweep): Select, review, repair, validate, and land bounded OpenClaw contributor PR batches with durable cross-run state.
+
+### Docs
+
+- [`explain-architecture`](skills/explain-architecture): Research and explain a technical system through progressively detailed Excalidraw MCP App views.
 
 ### Planning
 
@@ -17,6 +22,7 @@ work.
 
 ### Utils
 
+- [`bro`](skills/bro): Restate the last message in plain human language, with no jargon.
 - [`html`](skills/html): Choose and create single-file HTML artifacts for visual explanations, plans, reviews, and lightweight tools.
 
 ### Tools
