@@ -1,0 +1,6 @@
+interface:
+  display_name: "Drive to Completion"
+  short_description: "Drive an issue tree through verified completion"
+  default_prompt: "Use $drive-to-completion to monitor and drive this issue tree through implementation, review, and acceptance."
+policy:
+  allow_implicit_invocation: false
