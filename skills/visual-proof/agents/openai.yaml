@@ -1,0 +1,4 @@
+interface:
+  display_name: "Visual Proof"
+  short_description: "Capture inspected before/after UI evidence."
+  default_prompt: "Create PR-ready visual proof for this UI change."

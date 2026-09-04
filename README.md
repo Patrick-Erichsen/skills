@@ -20,6 +20,7 @@ work.
 
 - [`bro`](skills/bro): Restate the last message in plain human language, with no jargon.
 - [`html`](skills/html): Choose and create single-file HTML artifacts for visual explanations, plans, reviews, and lightweight tools.
+- [`visual-proof`](skills/visual-proof): Capture inspected before/after UI evidence across representative states and responsive viewports.
 
 ### Tools
 
