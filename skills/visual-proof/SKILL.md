@@ -31,6 +31,7 @@ The matrix is complete when every required state has candidate coverage at every
 - Keep route, fixture data, authentication, feature flags, theme, locale, browser family, viewport, and interaction sequence identical between baseline and candidate.
 - Make fixtures deterministic. The content-heavy state should exercise realistic extremes such as long titles, long descriptions, many rows or cards, wrapping, pagination, and scrolling.
 - Use the real running surface required by the repository. If repository policy permits a mock, label it clearly and assert the requests and fixture state it represents.
+- Verify which build each browser actually serves; cached assets and service workers can invalidate an otherwise identical comparison.
 
 ## Capture Evidence
 
@@ -39,9 +40,22 @@ The matrix is complete when every required state has candidate coverage at every
 - Frame the changed surface with enough surrounding context to judge layout. Sanitize secrets and personal data without hiding the behavior under review.
 - Keep working captures outside committed source unless the repository explicitly owns visual fixtures.
 
+## Edit Interaction Recordings
+
+Use three beats: **context → wait → result**. Establish the page and initiating action at normal speed, compress idle time, then hold the changed behavior long enough to inspect.
+
+- Accelerate only idle waiting. Start with 4–8× when useful and show the multiplier throughout that interval, such as “Waiting for the response (6× speed).” Restore 1× before meaningful actions, transitions, or results. Keep latency measurements at real speed.
+- Use a short, smoothly eased closeup on the actual changed element. Start around 1.5–2× with a 0.4–0.6-second ease; frame its label and nearby result as well as the detail. Measure the target in the captured viewport after layout settles, and reserve room for captions.
+- Narrate visible behavior in one or two short caption lines. Align each caption with the action or result it describes, and hold the final evidence at normal speed for several seconds. Expand collapsed details through real UI controls when needed to make the result inspectable.
+- Preserve the untouched raw recording, capture script, and timing cues alongside the edited output. Edits may shorten waiting and direct attention; they must preserve the real action/result sequence.
+
+Prefer the repository's existing recording and rendering helpers. If it supplies a `proof-video` skill, read it before authoring cues; use its supported zoom, speed, and caption operations instead of building a parallel editor. For a helper that uses raw-video timestamps, keep all cues on that clock and let the renderer remap them after speed changes. Burn captions into the published video when the destination does not display subtitle tracks.
+
 ## Inspect Every Capture
 
 Open every screenshot and watch every video. Confirm that the intended state, viewport, changed behavior, and relevant surrounding layout are visible. Re-capture clipped, stale, blank, misleading, or incorrectly seeded evidence.
+
+For edited video, inspect the finalized output across its full timeline, then inspect full-size frames at speed boundaries, zoom transitions, caption changes, and the decisive result. Check that captions match the visible frame, the closeup keeps the relevant evidence readable and unobscured, and playback has returned to 1× for the result. Compare actual duration and frame rate with the intended edit; recording clocks and speed remapping can shift cues even when the script succeeds.
 
 Capture is not proof until this inspection passes.
 
