@@ -5,7 +5,7 @@ license: MIT
 metadata:
   source: "https://github.com/Patrick-Erichsen/skills/tree/main/skills/openclaw-pr-batch-sweep"
   upstream: "https://github.com/vincentkoc/dotskills/tree/main/skills/openclaw-pr-batch-sweep"
-  version: "0.7.0"
+  version: "0.8.0"
   spec: agentskills-v1
 ---
 
@@ -14,6 +14,16 @@ metadata:
 ## Purpose
 
 Drive a continuing queue of useful OpenClaw contributor PRs through two explicit phases: build a 20-item proposal queue for operator approval, then automatically review, repair, prove, and land approved work. Approval is the execution kickoff, not merely permission to inspect code. Focused micro-PRs, UI work, and docs changes are eligible.
+
+An explicitly requested `prepare-for-review` mode instead winnows a larger pool into up to 10 genuinely review-ready existing or task-owned PRs. It may qualify, repair, prove, and publish task-owned PRs, but it never approves, merges, deploys, or changes the standard exact-head approval flow.
+
+An explicitly requested `human-review-loop` mode prepares about 20 distinct PRs
+per repository run for human signoff. Read
+[references/human-review-loop.md](references/human-review-loop.md) instead of the
+standard approval-before-inspection flow below. It permits focused preparation
+and authorized contributor-branch repairs, but never scheduled landing. Its
+active-ownership rule supersedes the standard prior-participation exclusion only
+in that mode. Full tool access is not landing approval.
 
 The current user-facing task owns standard-mode execution. It keeps durable per-PR checkpoints, resumes after worker or tool interruption, and remains active until every approved PR is landed or has a concrete terminal outcome. Implementation workers prepare immutable evidence packages; only the coordinator mutates GitHub or invokes a merge.
 
@@ -26,6 +36,7 @@ Requires `gh`, `gitcrawl`, and the OpenClaw maintainer, testing, autoreview, Cra
 Read [references/operator-selection-policy.md](references/operator-selection-policy.md) before selecting candidates. Read [references/candidate-approval.md](references/candidate-approval.md) before presenting or acting on candidates. Read [references/worker-contract.md](references/worker-contract.md) before spawning sub-agents after approval.
 Read [references/execution-control.md](references/execution-control.md) when an exact head is approved or when recovering interrupted execution.
 Read [references/parallel-tranches.md](references/parallel-tranches.md) only for `parallel-tranches` or `manifest` mode.
+Read [references/prepare-for-review.md](references/prepare-for-review.md) only for an explicitly requested `prepare-for-review` run.
 Read and update the canonical ledger in the private `Patrick-Erichsen/openclaw-pr-sweep-state` repository so fresh runs inherit prior screened, carried, landed, rejected, closed, and explicitly skipped PRs.
 
 Compose the repository skills instead of duplicating them:
@@ -47,6 +58,7 @@ Compose the repository skills instead of duplicating them:
 - PRs already touched by another human OpenClaw maintainer should stay out of the proposal queue.
 - Reuse a small retained worker pool so review scales without accumulating completed workers or creating noisy local process pressure.
 - The operator explicitly asks to split a larger discovery window across multiple independently interactive Codex threads.
+- The operator explicitly asks the system to prepare up to 10 review-ready PRs from a larger pool without approving or landing them.
 
 ## Workflow
 
@@ -55,6 +67,8 @@ Choose the mode before candidate work:
 - `standard` is the default for nightly automation, `next 20`, and ordinary batches. Follow steps 1-8 unchanged.
 - `parallel-tranches` requires an explicit operator request with tranche count and size. Follow `references/parallel-tranches.md`; act only as dispatcher and reconciler in this thread.
 - `manifest` requires a lane file created by `parallel-tranches`. Process only that immutable assignment, then follow steps 2-8 within the lane. A manifest lane cannot dispatch more lanes.
+- `prepare-for-review` requires explicit operator opt-in. Follow `references/prepare-for-review.md` instead of steps 1-8; preserve the standard mode's approval and landing semantics unchanged.
+- `human-review-loop` requires explicit operator opt-in. Follow `references/human-review-loop.md` instead of steps 1-8. The human landing gate has no expiry or automatic promotion.
 
 1. Recover the proposal and execution queues.
    - Read recent thread state and clone or refresh `Patrick-Erichsen/openclaw-pr-sweep-state` in a task-owned isolated checkout.
@@ -79,6 +93,7 @@ Choose the mode before candidate work:
    - Write discovery JSON to a file and set `OPEN_PRS_JSON` to that path. The ranker accepts either a raw PR array or gitcrawl's `{ "threads": [...] }` envelope. It normalizes `labels_json`, `author_login`, and `is_draft`; do not strip those fields before ranking.
    - Combine `handled_refs` and `explicit_skips` into comma-separated `HANDLED_PRS`. Numbers, `#123`, and full pull-request URLs are accepted.
    - Run `scripts/rank-candidates.mjs --input "$OPEN_PRS_JSON" --limit 100 --batch-size 20 --proposal-mode --decision-ledger "$DECISION_LEDGER" --exclude "$HANDLED_PRS"` as a first-pass noise filter.
+   - Before final ordering, apply the freshness-aware release priority in `references/operator-selection-policy.md`. The coordinator owns the official release/channel evidence and confirmation level; never infer a confirmed regression from title text or labels, and never treat unreleased `main` as a published release.
    - Set `HYDRATED_PRS_JSON` to a second JSON file, then hydrate the top 30-40 with `scripts/hydrate-candidates.mjs --input <ranked.json> --output "$HYDRATED_PRS_JSON"`. It serially merges authoritative REST author association, file count, merge state, paginated file deltas, and live check rollups while retrying unresolved mergeability.
    - After approval, refresh only the active PR's complete source surface. Do not rehydrate the global open-PR set before a PR-specific proof, review, push, or merge action.
    - During hydration, inspect every page of top-level PR comments, submitted reviews, and inline review comments. Ignore bots and the PR author. Load the live repository collaborator-permission map once per run, then record participating humans with `write`, `maintain`, or `admin` access in `maintainerInteractions`.
@@ -178,14 +193,15 @@ Choose the mode before candidate work:
 
 ## Inputs
 
-- `mode`: `standard` (default), `parallel-tranches`, or `manifest`.
+- `mode`: `standard` (default), `parallel-tranches`, `manifest`, or explicitly opted-in `prepare-for-review` / `human-review-loop`.
 - `tranche_count`: required in `parallel-tranches`; default `3`, maximum `5`.
 - `tranche_size`: required in `parallel-tranches`; default `50`, maximum `100`.
 - `run_id`: required in `manifest`; inherited from the dispatcher.
 - `lane_id`: required in `manifest`; inherited from the dispatcher.
 - `lane_manifest`: required in `manifest`; the immutable lane-file path in the state repository.
-- `candidate_target`: default `20`, maximum `20`.
-- `approval_gate`: required.
+- `candidate_target`: default `20`, maximum `20` in standard or manifest mode.
+- `review_ready_target`: default `10`, maximum `10`, only in explicitly opted-in `prepare-for-review` mode.
+- `approval_gate`: required in standard or manifest mode; never reinterpret it in `prepare-for-review` mode.
 - `approval_action`: `approve` means start now and drive the approved execution-root ancestry to `landed`, `closed`, `rejected`, `blocked`, or `carried`; no separate kickoff is required.
 - `discovery_mode`: default `new-then-backlog`.
 - `repo`: default `openclaw/openclaw`.
@@ -199,7 +215,8 @@ Choose the mode before candidate work:
 
 ## Outputs
 
-- Approval queue with up to 20 candidate cards and no padding.
+- Approval queue with up to 20 candidate cards and no padding in standard or manifest mode.
+- In `prepare-for-review`, up to 10 exact-head, independently verified review-ready PRs winnowed from a larger pool, with no approval, merge, or deployment action.
 - In `parallel-tranches`, one durable reservation run and one verified persistent Codex thread per non-overlapping manifest.
 - In `manifest`, a lane-local proposal queue, operator decisions, execution outcomes, and dispatcher notification without global cursor mutation.
 - Explicit operator decisions tied to execution-root SHAs, with task-owned repair descendants recorded through the final exact head.

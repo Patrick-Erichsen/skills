@@ -12,13 +12,14 @@ For each candidate, present:
 
 - PR link, title, author, exact head SHA, age, and source (`operator` or `discovery`).
 - Claimed operator or contributor value in one sentence.
+- Release applicability: channel/cohort, exact published tag or version and date, official evidence reference, and confirmation level (`confirmed bug`, `confirmed regression`, `alleged`, `unreleased-main-only`, `evergreen`, or `unknown`). State the prior known-good release or introducing change for `confirmed regression`.
 - Surface, production/test/docs LOC, changed-file count, and change kind.
 - Live mergeability and CI summary, including every failing or pending non-routine check.
 - Visible risk labels or policy warnings.
 - Estimated review cost: `small`, `medium`, or `large`.
 - Recommendation: `approve and land`, `decline`, or `needs operator judgment`.
 
-These are candidate cards, not code-review verdicts. Use `unknown` for facts that require code execution or owner-boundary analysis.
+These are candidate cards, not code-review verdicts. Use `unknown` for facts that require code execution or owner-boundary analysis. Never infer release confirmation from a title, label, or issue claim; the coordinator must attach the official release context and reproducible or source-backed evidence.
 
 ## Durable states
 

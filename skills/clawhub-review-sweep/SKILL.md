@@ -16,6 +16,11 @@ Maintain a complete private review ledger for every open issue and pull request 
 
 The ledger is a private decision surface. Discovery and review are read-only. Do not comment, review, label, close, merge, push, moderate, email, deploy, or mutate production until Patrick has inspected the proposed actions and approved exact targets.
 
+Exception only for explicitly authorized `human-review-loop`: follow
+[references/human-review-loop.md](references/human-review-loop.md) for focused
+preparation and repair of eligible PRs before signoff. Exhaustive inventory stays
+mandatory; scheduled landing and administrative actions remain forbidden.
+
 This skill is modeled on the proposal and exact-head approval boundary in `openclaw-pr-batch-sweep`, but it is exhaustive rather than candidate-ranked and covers issues and PRs as distinct record kinds.
 
 Read before use:
@@ -88,7 +93,7 @@ The state repository contains:
 
 - `repo`: default `openclaw/clawhub`.
 - `state_repo`: default `Patrick-Erichsen/clawhub-review-state`.
-- `mode`: `review-only` by default; `execute-approved` only after explicit approval.
+- `mode`: `review-only` by default; `execute-approved` only after explicit approval; `human-review-loop` only with explicit recurring preparation authority.
 - `since`: default `state.json.lastSuccessfulRunAt`.
 - `provided_items`: optional issue or PR URLs to highlight without excluding the rest of the open set.
 

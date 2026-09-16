@@ -13,6 +13,17 @@ Do not reject a PR merely because it is small or touches UI or docs.
 
 Small does not mean automatically good. Cleanup, typo, wording, or mechanical changes still need enough value to justify review, but line count is never the deciding gate.
 
+## Fresh Published-Release Priority
+
+Apply this priority only after every hard reject, duplicate, maintainer-participation, and proof-completeness gate.
+
+1. At run time, the coordinator resolves the most recent **actually published applicable release** from official OpenClaw release/source evidence. Record its channel or cohort, concrete tag or version, publication date, and evidence reference. Keep stable and beta cohorts separate when they serve different users; a beta release is not the latest applicable stable release. A draft release, moving branch, or unreleased `main` commit is never a published release.
+2. Give the strongest preference to a confirmed bug affecting that release. Confirmation requires reproducible behavior on the release artifact/tree or direct source-backed evidence tied to that exact release, plus a concrete user or operator impact. Call it a regression only when evidence also identifies a prior applicable known-good release or the introducing source change.
+3. Do not promote title words, labels, issue claims, or CI failures alone to confirmed status. Mark uncertain or conflicting evidence as `alleged` or `unknown` and give it no release-regression uplift. An unreleased-main-only failure receives no published-release uplift. Work already fixed on current `main` remains rejected rather than becoming a backport or release-policy exception.
+4. Among comparably safe, supported candidates, order confirmed latest-applicable-release breakage ahead of low-value cleanup and ordinary evergreen bugs. Then apply the existing Vision Wash: prefer operator-facing and Control UI reliability and focused fixes to existing ClawHub integration paths when those changes remain inside policy. This ordering never overrides risk exclusions, exact-head proof, best-fix, duplicate, maintainer-participation, or approval gates.
+
+The coordinator owns this release context and evidence record. The deterministic ranker remains a metadata noise filter; do not add or infer trusted release/regression fields from titles or labels. If later automation consumes such fields, they must come from a coordinator-authored evidence manifest tied to official release sources and the exact candidate head.
+
 ## Execution Hard Rejects
 
 Reject before assigning an implementation lane unless Patrick explicitly approves the named risk override:
