@@ -1,0 +1,4 @@
+interface:
+  display_name: "Loop Creator"
+  short_description: "Native loops with dashboards and retained evidence"
+  default_prompt: "Use $loop-creator to turn this workflow into a native OpenClaw automation with an inspectable dashboard."
