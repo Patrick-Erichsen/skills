@@ -33,6 +33,7 @@ for (const [folder, expected] of [
     const checkContexts = record.source?.latestCommit?.statusCheckRollup?.contexts;
     const evidenceTruncated =
       record.source?.commentsTruncated === true ||
+      record.source?.assigneesTruncated === true ||
       record.source?.labelsTruncated === true ||
       record.source?.filesTruncated === true ||
       record.source?.reviewsTruncated === true ||

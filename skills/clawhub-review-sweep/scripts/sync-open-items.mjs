@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { REVIEW_STATUSES, reviewRevision } from './review-schema.mjs';
+import { fingerprint, normalizedSource } from './review-source.mjs';
 
 const args = process.argv.slice(2);
 let stateDir = '';
@@ -21,7 +21,7 @@ for (let index = 0; index < args.length; index += 1) {
 
 if (!stateDir) throw new Error('--state is required');
 if (repository !== 'openclaw/clawhub') {
-  throw new Error('clawhub-review-sweep v0.1.0 supports only openclaw/clawhub');
+  throw new Error('clawhub-review-sweep supports only openclaw/clawhub');
 }
 const [owner, name] = repository.split('/');
 if (!owner || !name) throw new Error(`Invalid repository: ${repository}`);
@@ -285,6 +285,7 @@ function collectLiveEvidence() {
     'pullRequests',
     `${common}
         isDraft headRefOid baseRefOid mergeable mergeStateStatus reviewDecision
+        assignees(first: 100) { totalCount nodes { login } }
         additions deletions changedFiles
         files(first: 100) { totalCount nodes { path additions deletions } }
         reviews(last: 100) {
@@ -330,6 +331,15 @@ function collectLiveEvidence() {
   }
 
   for (const pull of collected.pullRequests.nodes) {
+    if (pull.assignees.totalCount > pull.assignees.nodes.length) {
+      const assignees = paginatedArray(
+        `repos/${owner}/${name}/issues/${pull.number}/assignees?per_page=100`,
+      ).map((assignee) => ({ login: assignee.login }));
+      if (assignees.length !== pull.assignees.totalCount) {
+        throw new Error(`PR #${pull.number}: incomplete assignee list`);
+      }
+      pull.assignees = { totalCount: assignees.length, nodes: assignees };
+    }
     if (pull.labels.totalCount > pull.labels.nodes.length) {
       const labels = paginatedArray(
         `repos/${owner}/${name}/issues/${pull.number}/labels?per_page=100`,
@@ -445,21 +455,6 @@ for (const pull of live.pullRequests.nodes) {
   }
 }
 
-function stable(value) {
-  if (Array.isArray(value)) return value.map(stable);
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, stable(value[key])]));
-  }
-  return value;
-}
-
-function fingerprint(source, { includeObservedAt = false } = {}) {
-  const materialSource = { ...source };
-  if (!includeObservedAt) delete materialSource.updatedAt;
-  const digest = createHash('sha256').update(JSON.stringify(stable(materialSource))).digest('hex');
-  return `sha256:${digest}`;
-}
-
 function defaultReview(currentFingerprint) {
   return {
     status: 'needs-review',
@@ -485,42 +480,6 @@ function defaultReview(currentFingerprint) {
   };
 }
 
-function normalizedSource(kind, node) {
-  const base = {
-    title: node.title,
-    body: node.body ?? '',
-    author: node.author?.login ?? null,
-    createdAt: node.createdAt,
-    updatedAt: node.updatedAt,
-    labels: node.labels.nodes.map((entry) => entry.name).sort(),
-    ...(node.labels.totalCount > node.labels.nodes.length ? { labelsTruncated: true } : {}),
-    comments: node.comments.nodes,
-    commentCount: node.comments.totalCount,
-    commentsTruncated: node.comments.totalCount > node.comments.nodes.length,
-  };
-  if (kind === 'issue') return base;
-  return {
-    ...base,
-    isDraft: node.isDraft,
-    headRefOid: node.headRefOid,
-    baseRefOid: node.baseRefOid,
-    mergeable: node.mergeable,
-    mergeStateStatus: node.mergeStateStatus,
-    reviewDecision: node.reviewDecision,
-    additions: node.additions,
-    deletions: node.deletions,
-    changedFiles: node.changedFiles,
-    files: node.files.nodes,
-    filesTruncated: node.files.totalCount > node.files.nodes.length,
-    reviews: node.reviews.nodes,
-    reviewCount: node.reviews.totalCount,
-    reviewsTruncated: node.reviews.totalCount > node.reviews.nodes.length,
-    reviewThreads: node.reviewThreads,
-    reviewCommentCount: node.reviewCommentCount,
-    latestCommit: node.commits.nodes[0]?.commit ?? null,
-  };
-}
-
 mkdirSync(path.join(stateDir, 'reviews', 'issues'), { recursive: true });
 mkdirSync(path.join(stateDir, 'reviews', 'pulls'), { recursive: true });
 mkdirSync(path.join(stateDir, 'runs'), { recursive: true });
@@ -529,6 +488,7 @@ const summary = { repository, generatedAt: new Date().toISOString(), issues: {},
 
 function syncKind(kind, nodes) {
   const folder = kind === 'issue' ? 'issues' : 'pulls';
+  const fingerprintVersion = kind === 'pull' ? 4 : 3;
   const counts = { open: nodes.length, created: 0, changed: 0, unchanged: 0 };
   for (const node of nodes) {
     const file = path.join(stateDir, 'reviews', folder, `${node.number}.json`);
@@ -544,7 +504,7 @@ function syncKind(kind, nodes) {
         number: node.number,
         url: node.url,
         fingerprint: currentFingerprint,
-        fingerprintVersion: 3,
+        fingerprintVersion,
         source,
         review: defaultReview(currentFingerprint),
         actions: [],
@@ -584,7 +544,7 @@ function syncKind(kind, nodes) {
           ? JSON.parse(JSON.stringify(record.review))
           : null;
         record.fingerprint = currentFingerprint;
-        record.fingerprintVersion = 3;
+        record.fingerprintVersion = fingerprintVersion;
         if (record.review?.reviewedFingerprint === previousFingerprint) {
           record.review.reviewedFingerprint = currentFingerprint;
         }
@@ -609,7 +569,7 @@ function syncKind(kind, nodes) {
         record.fingerprintMigrations.push({
           from: previousFingerprint,
           to: currentFingerprint,
-          version: 3,
+          version: fingerprintVersion,
           migratedAt: summary.generatedAt,
           reason:
             kind === 'issue'
@@ -620,7 +580,7 @@ function syncKind(kind, nodes) {
         counts.unchanged += 1;
       } else if (!reopened && record.fingerprint === currentFingerprint) {
         record.source = source;
-        record.fingerprintVersion = 3;
+        record.fingerprintVersion = fingerprintVersion;
         counts.unchanged += 1;
       } else {
         record.history ??= [];
@@ -633,7 +593,7 @@ function syncKind(kind, nodes) {
           reason: reopened ? 'item reopened' : 'material review surface changed',
         });
         record.fingerprint = currentFingerprint;
-        record.fingerprintVersion = 3;
+        record.fingerprintVersion = fingerprintVersion;
         record.source = source;
         record.review = defaultReview(currentFingerprint);
         counts.changed += 1;

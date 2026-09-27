@@ -13,6 +13,8 @@ export const ACTION_TYPES = new Set([
   'investigate',
   'none',
 ]);
+export const AUTOLAND_POLICY_ID = 'clawhub-2026-09-25';
+export const AUTOLAND_ACTION_TYPES = new Set(['repair', 'merge', 'comment', 'close']);
 export const ADMIN_CLASSIFICATIONS = new Set([
   'none',
   'exact-command',
@@ -94,6 +96,10 @@ export function actionIsExternal(type) {
   return !['investigate', 'none'].includes(type);
 }
 
+function usesAutoland(action) {
+  return ['autoland-candidate', 'autoland-qualified'].includes(action?.approvalStatus);
+}
+
 function stable(value) {
   if (Array.isArray(value)) return value.map(stable);
   if (value && typeof value === 'object') {
@@ -154,8 +160,38 @@ export function reviewProblems(review, fingerprint) {
       if (action?.public !== actionIsExternal(action?.type)) {
         problems.push(`action ${index} has inconsistent external-action classification`);
       }
-      if (action?.approvalStatus !== 'awaiting-patrick-review') {
-        problems.push(`action ${index} is not awaiting Patrick review`);
+      if (action?.approvalStatus === 'awaiting-patrick-review') {
+        if (action.autoland != null) problems.push(`action ${index} has unapproved autoland data`);
+      } else if (
+        action?.approvalStatus === 'autoland-candidate' ||
+        action?.approvalStatus === 'autoland-qualified'
+      ) {
+        if (review?.status !== 'complete') problems.push(`action ${index} needs a complete review`);
+        if (!AUTOLAND_ACTION_TYPES.has(action.type)) {
+          problems.push(`action ${index} is outside the autoland action set`);
+        }
+        if (action.approvalStatus === 'autoland-candidate' && action.type !== 'repair') {
+          problems.push(`action ${index} cannot execute before qualification`);
+        }
+        if (action.autoland?.policyId !== AUTOLAND_POLICY_ID) {
+          problems.push(`action ${index} requires the agreed ClawHub policy ID`);
+        }
+        if (typeof action.autoland?.contract !== 'string' || !action.autoland.contract.trim()) {
+          problems.push(`action ${index} requires an established contract`);
+        }
+        if (!isNonEmptyStringArray(action.autoland?.eligibilityEvidence)) {
+          problems.push(`action ${index} requires eligibility evidence`);
+        }
+        if (action.approvalStatus === 'autoland-qualified') {
+          if (!isNonEmptyStringArray(action.autoland?.proof)) {
+            problems.push(`action ${index} requires before/after or baseline proof`);
+          }
+          if (!isNonEmptyStringArray(action.autoland?.validation)) {
+            problems.push(`action ${index} requires completed validation`);
+          }
+        }
+      } else {
+        problems.push(`action ${index} has invalid approval status`);
       }
     }
   }
@@ -204,6 +240,12 @@ export function reviewProblems(review, fingerprint) {
   ) {
     problems.push('admin-command action requires an exact admin capability');
   }
+  if (
+    review?.proposedActions?.some(usesAutoland) &&
+    admin?.classification !== 'none'
+  ) {
+    problems.push('admin-capability reviews cannot use autoland');
+  }
 
   const clawscan = review?.clawscan;
   if (!CLAWSCAN_CLASSIFICATIONS.has(clawscan?.classification)) {
@@ -218,6 +260,12 @@ export function reviewProblems(review, fingerprint) {
     }
   } else if (clawscan?.closureComment !== null) {
     problems.push('non-remediation ClawScan classifications require a null closureComment');
+  }
+  if (
+    review?.proposedActions?.some(usesAutoland) &&
+    ['manual-finding-remediation', 'moderation-or-abuse'].includes(clawscan?.classification)
+  ) {
+    problems.push('ClawScan remediation and moderation cannot use autoland');
   }
   return problems;
 }

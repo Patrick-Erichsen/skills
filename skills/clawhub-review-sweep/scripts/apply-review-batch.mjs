@@ -61,7 +61,8 @@ for (const update of updates) {
       targetFingerprint: record.fingerprint,
       summary: action.summary,
       public: actionIsExternal(action.type),
-      approvalStatus: 'awaiting-patrick-review',
+      approvalStatus: action.approvalStatus ?? 'awaiting-patrick-review',
+      ...(action.autoland == null ? {} : { autoland: action.autoland }),
     })),
     adminCapability: {
       classification: 'none',
