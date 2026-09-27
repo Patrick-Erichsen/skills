@@ -1,8 +1,8 @@
 interface:
   display_name: "ClawHub Review Sweep"
-  short_description: "Review every open ClawHub issue and PR privately"
+  short_description: "Review ClawHub backlog and land eligible fixes"
   brand_color: "#111827"
-  default_prompt: "Use $clawhub-review-sweep to refresh and review every open ClawHub issue and pull request in the private ledger, then stop for my approval before any public action."
+  default_prompt: "Use $clawhub-review-sweep to review every open ClawHub issue and PR, record the agreed autoland eligibility, and land qualified fixes when I ask to reduce the backlog."
 
 policy:
   allow_implicit_invocation: true

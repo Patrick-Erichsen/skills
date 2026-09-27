@@ -10,7 +10,7 @@ work.
 - [loop-creator](skills/loop-creator) - Native OpenClaw automations with persistent dashboards, retained run evidence, and explicit action boundaries.
 
 - [`codex-handoff`](skills/codex-handoff): Continue one durable task in a verified, titled, pinned Codex thread.
-- [`clawhub-review-sweep`](skills/clawhub-review-sweep): Review and durably track every open ClawHub issue and pull request in a private approval-gated ledger.
+- [`clawhub-review-sweep`](skills/clawhub-review-sweep): Review every open ClawHub issue and PR in a private ledger, autoland qualified fixes, and route product or policy decisions for review.
 - [`drive-to-completion`](skills/drive-to-completion): Monitor and drive a root issue and its subissues through implementation, review, and acceptance.
 - [`openclaw-pr-batch-sweep`](skills/openclaw-pr-batch-sweep): Select, review, repair, validate, and land bounded OpenClaw contributor PR batches with durable cross-run state.
 

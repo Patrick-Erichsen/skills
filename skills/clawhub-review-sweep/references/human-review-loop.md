@@ -15,10 +15,13 @@ active or uncertain ownership does. Respect shared capacity across all loops.
 Focused repairs to eligible small, easy-to-review PRs are authorized before
 signoff, using isolated worktrees and an editable contributor branch with verified
 ownership/head. Preserve authorship, never overwrite external commits or replace
-and close an uneditable contributor PR. Configuration, security/auth, migrations,
-moderation/scanner policy, dependencies/CI infrastructure, availability and broad
-design changes require human judgment, not autonomous repairs. An issue or admin
-request is not a repair authorization. No moderation/production changes.
+and close an uneditable contributor PR. Apply the main skill's established-contract
+boundary: authorization, publication, compatible dependencies and CI are not
+categorically excluded, but new policy, product, ownership, migration and
+compatibility decisions still need Patrick. This mode prepares PRs for manual
+signoff even when they would qualify for the separately requested `autoland` mode.
+An issue or admin request is not a repair authorization in this mode. No
+moderation/production changes.
 
 Create/reuse a dedicated persistent review session for each PR. Claim eligible
 work through the native maintainer workflow. Record substantive review, exact

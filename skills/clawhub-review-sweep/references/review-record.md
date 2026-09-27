@@ -52,9 +52,28 @@ Keep one JSON file per GitHub item. Issues and pull requests use separate direct
 }
 ```
 
-For PRs, `source` must include the exact `headRefOid`, all changed files, complete checks, mergeability, review decision, general discussion, submitted reviews, and inline review threads/comments. For issues, it must include body, complete discussion, labels, and material update timestamps. The sync paginates nested REST evidence when the GraphQL summary is truncated.
+For PRs, `source` must include the exact `headRefOid`, assignees, all changed files, complete checks, mergeability, review decision, general discussion, submitted reviews, and inline review threads/comments. An assignee change invalidates the PR fingerprint and any autoland qualification. For issues, `source` must include body, complete discussion, labels, and material update timestamps. The sync paginates nested REST evidence when the GraphQL summary is truncated.
 
 Verdicts use the maintained enum in `scripts/review-schema.mjs`; add a reusable category there rather than accepting arbitrary strings.
+
+## Action routes
+
+Every proposed action has its own route. The default `approvalStatus` is `awaiting-patrick-review`. For work inside the agreed policy, set `approvalStatus` to `autoland-candidate` for a bounded `repair`, then to `autoland-qualified` for a final `repair`, `merge`, proof/completion `comment`, or fixed/duplicate `close`. Never use these values for `admin-command`, public `review`, labels, deployments, releases, or moderation.
+
+An autoland action also carries:
+
+```json
+{
+  "approvalStatus": "autoland-candidate",
+  "autoland": {
+    "policyId": "clawhub-2026-09-25",
+    "contract": "Specific established behavior to restore",
+    "eligibilityEvidence": ["Current source/spec or accepted behavior proving the contract"]
+  }
+}
+```
+
+For `autoland-qualified`, add nonempty `proof` and `validation` arrays to `autoland`. Proof should point to real before/after behavior or the strongest available baseline; validation should name completed relevant tests, review and checks. These are reviewable references, not a substitute for checking the final live target before execution. A candidate repair is local only even though the action's `public` field conservatively identifies `repair` as an external action type. A newly prepared review revision records the repair and qualification before GitHub push. A changed source fingerprint invalidates the qualification until the new head or issue state is re-reviewed. Existing records without `autoland` retain their human-decision route.
 
 ## Freshness
 
@@ -64,7 +83,7 @@ Every batch review update must include the exact current `fingerprint`; omitted 
 
 The batch script computes `review.revision` from the complete substantive review, proposed actions, admin classification, and ClawScan classification. It excludes only the observation timestamp. Revisions replaced at the same source fingerprint are retained in `reviewHistory`. Approval and execution must match the current source fingerprint and immutable review revision; a revised recommendation invalidates the old approval even when GitHub has not changed.
 
-The batch script derives each action's `public` safety flag from its type. `investigate` and `none` are private/read-only; comment, close, review, merge, repair, and admin-command actions always require the external-action approval path.
+The batch script derives each action's `public` safety flag from its type. `investigate` and `none` are private/read-only. Public actions follow the recorded human or autoland route; an autoland candidate is authorization to repair, not to merge or close.
 
 An unchanged fingerprint preserves a completed review. PR fingerprints exclude top-level `updatedAt` because the sync fetches complete discussion, reviews, inline threads, labels, files, and checks. Issue fingerprints conservatively include `updatedAt` until timeline/cross-reference/project events are fetched as a complete connection; bot-only churn may therefore require a quick no-material-change re-review.
 
