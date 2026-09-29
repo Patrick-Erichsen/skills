@@ -3,7 +3,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
 
 const read = (file) => JSON.parse(fs.readFileSync(file, "utf8"));
 const json = (value) => JSON.stringify(value, null, 2) + "\n";
@@ -389,7 +388,11 @@ function main([command, ...args]) {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+if (
+  process.argv[1] &&
+  fs.existsSync(process.argv[1]) &&
+  fs.realpathSync(process.argv[1]) === fs.realpathSync(new URL(import.meta.url))
+) {
   try {
     process.stdout.write(json(main(process.argv.slice(2))));
   } catch (error) {
