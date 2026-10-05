@@ -10,11 +10,29 @@ metadata:
 
 # ClawHub review sweep
 
+## Factory modes
+
+For Software Factory, read the private `loops/clawhub.md` definition.
+
+- **discovery:** enumerate the complete open issue/PR set and maintain source
+  fingerprints. Apply the private prioritized selection rule; create/reuse
+  canonical Linear work with source run, evidence, intended outcome and authority.
+  Stop after queue/ledger/coverage readback. Do not perform substantive delivery
+  review, fixes, public actions, merges, moderation or deployments.
+- **factory-item:** use review/qualification and ledger mechanics for the single
+  assigned item under its factory ownership and permission record. Do not start
+  another sweep or competing coordinator. Return proof and disposition to the
+  existing Linear owner. Preserve named human-review restrictions.
+
+A discovery inventory does not mark every item substantively reviewed or advance
+lastSuccessfulRunAt as though a full review sweep completed; retain a separate
+source inventory receipt/cursor using the ledger's supported extension points.
+
 ## Purpose
 
 Maintain a complete private review ledger for every open issue and pull request in `openclaw/clawhub`. Each run must enumerate the whole live open set, create records for missing items, re-review changed items, preserve unchanged reviews, and summarize everything newly opened or materially updated since the prior successful run.
 
-The ledger is a private decision surface. An inventory or review request stays read-only. Patrick's September 25, 2026 ClawHub agreement also authorizes bounded repair, proof, merge, and evidence-backed issue closeout without another per-PR approval when the task calls for landing or backlog reduction and the work qualifies below. This authority applies to Patrick's ClawHub work, not other users or repositories. A named `human-review-loop` run remains manual; use [its reference](references/human-review-loop.md) when that mode is requested.
+The ledger is a private decision surface. Inventory/review requests authorize source bookkeeping, not public action. Read the supplied operator policy for permitted repairs or landing. A named human-review-loop retains its human gate; use its reference when requested.
 
 Unlike the OpenClaw PR sweep, ClawHub does not categorically exclude authorization, publication, dependencies, CI, or maintainer-authored work. The established behavior and the final evidence decide eligibility.
 
@@ -27,17 +45,13 @@ Read before use:
 
 Compose the repository-local `clawhub-pr-maintainer` and `clawhub-moderation` skills. Use `autoreview` when a PR advances to repair or landing. Admin mutations must use `clawhub-admin`; never call Convex mutations directly.
 
-## Agreed autoland boundary
+## Action boundaries
 
-- Qualify an issue or PR when a bounded fix restores an established contract or performs compatible maintenance. Establish that contract from accepted intent, current source/specs, or demonstrated supported behavior. Preserve Patrick's explicit decisions; for example, deleting comments does not authorize restoring the old comments query.
-- Eligible surfaces include existing authorization and publication checks, current-owner access, resource cleanup, catalog/API/UI/docs/performance corrections, compatible dependency updates, CI repairs, and generated guidance. An issue may need a new PR. Security sensitivity increases the proof required; it is not a categorical veto.
-- Other maintainers' work can qualify. Respect drafts, explicit holds, active ownership, unresolved review threads, canonical work, and contributor branch permissions. A past maintainer comment alone is not a veto.
-- Escalate new product behavior, integrations, trust/scanner policy, ownership or identity decisions, major migrations, new permission or secret-handling policy, release policy, or a newly chosen compatibility/availability limit. If a repair cannot preserve supported behavior without making one of those choices, stop that candidate and present the specific decision.
-- Deployments, releases, account or artifact moderation, admin commands, email, and other production operations need their own task authorization. The standing autoland agreement does not supply it.
-
-Eligibility authorizes doing the engineering work. It is not a merge-ready verdict. Show actual before/after behavior from the changed system where appropriate, including legitimate success and relevant denial or negative controls. Review the final revision, account for current `main`, run required checks, address actionable findings, and refresh the live head and discussion before landing. A changed head requires renewed qualification; it does not require another Patrick approval if the result remains within this agreed boundary. Record the contract, qualification evidence, and action route in the ledger as described in [references/review-record.md](references/review-record.md).
-
-Do local repairs under `autoland-candidate`. Present comparable proof before pushing a repair branch or handing it off; move the action to `autoland-qualified` after validation. Public GitHub changes use the qualified route and the final live checks.
+Read the task's operator policy and [authorization mechanics](references/operator-approval.md).
+Personal standing permissions live in the operator's private configuration.
+Qualify the actual final revision with comparable proof, current-main context,
+required checks, actionable-feedback resolution and fresh target state. Record
+candidate versus qualified action separately; selection never means merge-ready.
 
 ## Canonical state
 
@@ -98,7 +112,7 @@ The state repository contains:
 
 - `repo`: default `openclaw/clawhub`.
 - `state_repo`: default `Patrick-Erichsen/clawhub-review-state`.
-- `mode`: `review-only` for inventory/review requests; `autoland` when the task asks to fix or land eligible ClawHub backlog work; `execute-approved` for a named human-approved action; `human-review-loop` for explicitly requested manual preparation.
+- `mode`: `discovery` or `factory-item` for the shared factory; `review-only` for inventory/review requests; `autoland` when the task asks to fix or land eligible ClawHub backlog work; `execute-approved` for a named human-approved action; `human-review-loop` for explicitly requested manual preparation.
 - `since`: default `state.json.lastSuccessfulRunAt`.
 - `provided_items`: optional issue or PR URLs to highlight without excluding the rest of the open set.
 

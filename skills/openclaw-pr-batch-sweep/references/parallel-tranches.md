@@ -1,6 +1,6 @@
 # Parallel tranches
 
-Use this branch only when the operator explicitly requests multiple independently interactive PR-review sessions. The normal and nightly path remains `standard`.
+Use this branch only when the operator explicitly requests multiple independently interactive PR-review sessions. Interactive batches default to `standard`; factory automations use `discovery`.
 
 ## Roles
 

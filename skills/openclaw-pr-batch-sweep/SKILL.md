@@ -1,6 +1,6 @@
 ---
 name: openclaw-pr-batch-sweep
-description: Find OpenClaw PR candidates for operator approval, then run durable, coordinator-owned review, repair, validation, and landing. Supports one queue and explicitly requested parallel tranches.
+description: Find OpenClaw PR candidates for operator approval, then run durable, coordinator-owned review, repair, validation, and landing. Supports discovery into an external work queue and explicitly requested interactive sweeps.
 license: MIT
 metadata:
   source: "https://github.com/Patrick-Erichsen/skills/tree/main/skills/openclaw-pr-batch-sweep"
@@ -10,6 +10,26 @@ metadata:
 ---
 
 # OpenClaw PR Batch Sweep
+
+## Factory modes
+
+When invoked by Software Factory, read its private `loops/openclaw.md` definition.
+
+- **discovery:** use the live inventory, hard exclusions, duplicate/reservation
+  checks and source-ledger mechanics below. Apply the supplied selection policy,
+  then create/reuse canonical Linear Ready to implement review tickets through
+  the Linear adapter. Record source run, PR/head, evidence and original allowance.
+  Do not enter the interactive candidate-approval or execution steps. No repair,
+  review dispatch, public comment, push, merge or deployment occurs in discovery.
+- **factory-item:** process only the assigned issue/PR under its factory owner,
+  original source-run authority and capacity reservation. Use this skill's
+  qualification/proof and repository mechanics without opening a second batch or
+  worker pool. An applicable recorded standing signoff can supply the scoped
+  execution authority; explicit human holds and repository gates remain. Stop
+  at readiness when landing is outside that authority. Return evidence and actual
+  outcomes to the factory/Linear owner, retaining source-ledger records.
+
+Other explicitly requested modes retain their existing interactive contracts.
 
 ## Purpose
 
@@ -31,9 +51,9 @@ Default to one standard queue. When the operator explicitly requests parallel tr
 
 Exclude PRs that already received human participation from an OpenClaw maintainer. Existing maintainer involvement means the PR is already in another maintainer's funnel and should not consume this discovery queue.
 
-Requires `gh`, `gitcrawl`, and the OpenClaw maintainer, testing, autoreview, Crabbox, and ClawSweeper skills. Use `ghx` and `gwt` when available; fall back to `gh`/REST and native Git worktrees when absent. The private sweep-state repository is the only coordination ledger; this workflow creates no Linear work.
+Requires `gh`, `gitcrawl`, and the OpenClaw maintainer, testing, autoreview, Crabbox, and ClawSweeper skills. Use `ghx` and `gwt` when available; fall back to `gh`/REST and native Git worktrees when absent. The private sweep-state repository retains PR reservations and discovery evidence. In factory modes, Linear owns the execution queue; interactive modes retain their ledger-driven flow.
 
-Read [references/operator-selection-policy.md](references/operator-selection-policy.md) before selecting candidates. Read [references/candidate-approval.md](references/candidate-approval.md) before presenting or acting on candidates. Read [references/worker-contract.md](references/worker-contract.md) before spawning sub-agents after approval.
+Read [references/operator-selection-policy.md](references/operator-selection-policy.md) before selecting candidates. For interactive standard/manifest modes, read [references/candidate-approval.md](references/candidate-approval.md) before presenting or acting on candidates. Read [references/worker-contract.md](references/worker-contract.md) before spawning sub-agents after approval.
 Read [references/execution-control.md](references/execution-control.md) when an exact head is approved or when recovering interrupted execution.
 Read [references/parallel-tranches.md](references/parallel-tranches.md) only for `parallel-tranches` or `manifest` mode.
 Read [references/prepare-for-review.md](references/prepare-for-review.md) only for an explicitly requested `prepare-for-review` run.
@@ -64,7 +84,7 @@ Compose the repository skills instead of duplicating them:
 
 Choose the mode before candidate work:
 
-- `standard` is the default for nightly automation, `next 20`, and ordinary batches. Follow steps 1-8 unchanged.
+- `standard` is the default for interactive `next 20` and ordinary batches; factory discovery automations explicitly choose `discovery`. Follow steps 1-8 unchanged.
 - `parallel-tranches` requires an explicit operator request with tranche count and size. Follow `references/parallel-tranches.md`; act only as dispatcher and reconciler in this thread.
 - `manifest` requires a lane file created by `parallel-tranches`. Process only that immutable assignment, then follow steps 2-8 within the lane. A manifest lane cannot dispatch more lanes.
 - `prepare-for-review` requires explicit operator opt-in. Follow `references/prepare-for-review.md` instead of steps 1-8; preserve the standard mode's approval and landing semantics unchanged.

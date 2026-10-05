@@ -1,107 +1,12 @@
-# Operator Selection Policy
+# Operator selection policy
 
-Use this policy for Patrick's OpenClaw contributor PR batches. Metadata ranking builds an approval queue; only operator-approved exact heads may enter live qualification.
+Load the selection policy supplied by the active operator/task before selecting
+candidates. In Patrick's Software Factory installation, the private
+`software-factory/references/openclaw-selection.md` and `loops/openclaw.md` own
+his exclusions, priorities and standing action scope. Keep personal permission
+changes in that private owner, not in this reusable source skill.
 
-## Eligible Work
-
-Do not reject a PR merely because it is small or touches UI or docs.
-
-- Micro-PRs may qualify when the behavior, contract, or correction is concrete and the proof is proportional.
-- Control UI, web UI, TUI, native UI, visual, translation, and frontend fixes may qualify. Require browser, screenshot, interaction, or focused automated proof appropriate to the change.
-- Docs-only changes may qualify. Verify statements against current source, commands, schemas, upstream contracts, and links as applicable.
-- Diagnostic wording may qualify when the new result is more actionable or correct and the affected failure path is proven.
-
-Small does not mean automatically good. Cleanup, typo, wording, or mechanical changes still need enough value to justify review, but line count is never the deciding gate.
-
-## Fresh Published-Release Priority
-
-Apply this priority only after every hard reject, duplicate, maintainer-participation, and proof-completeness gate.
-
-1. At run time, the coordinator resolves the most recent **actually published applicable release** from official OpenClaw release/source evidence. Record its channel or cohort, concrete tag or version, publication date, and evidence reference. Keep stable and beta cohorts separate when they serve different users; a beta release is not the latest applicable stable release. A draft release, moving branch, or unreleased `main` commit is never a published release.
-2. Give the strongest preference to a confirmed bug affecting that release. Confirmation requires reproducible behavior on the release artifact/tree or direct source-backed evidence tied to that exact release, plus a concrete user or operator impact. Call it a regression only when evidence also identifies a prior applicable known-good release or the introducing source change.
-3. Do not promote title words, labels, issue claims, or CI failures alone to confirmed status. Mark uncertain or conflicting evidence as `alleged` or `unknown` and give it no release-regression uplift. An unreleased-main-only failure receives no published-release uplift. Work already fixed on current `main` remains rejected rather than becoming a backport or release-policy exception.
-4. Among comparably safe, supported candidates, order confirmed latest-applicable-release breakage ahead of low-value cleanup and ordinary evergreen bugs. Then apply the existing Vision Wash: prefer operator-facing and Control UI reliability and focused fixes to existing ClawHub integration paths when those changes remain inside policy. This ordering never overrides risk exclusions, exact-head proof, best-fix, duplicate, maintainer-participation, or approval gates.
-
-The coordinator owns this release context and evidence record. The deterministic ranker remains a metadata noise filter; do not add or infer trusted release/regression fields from titles or labels. If later automation consumes such fields, they must come from a coordinator-authored evidence manifest tied to official release sources and the exact candidate head.
-
-## Execution Hard Rejects
-
-Reject before assigning an implementation lane unless Patrick explicitly approves the named risk override:
-
-- Draft PRs or current maintainer-authored/labeled queue work.
-- PRs with any existing top-level comment, submitted review, or inline review comment from a human who has live `write`, `maintain`, or `admin` access to `openclaw/openclaw`. Ignore bots and contributor self-comments. Treat an incomplete participation check as an exclusion, not as evidence that the PR is untouched.
-- Explicitly skipped, terminally handled, already rejected, closed, merged, or superseded PRs.
-- Security, SSRF, proxy, outbound request policy, auth, OAuth, token, secret, credential, redaction, permission, sandbox, pairing, trust-boundary, or sensitive-data changes.
-- Config schema/default changes, migrations, legacy compatibility, provider/auth routing, public plugin SDK/API, protocol versioning, release, CI/workflow, dependency, or infrastructure policy.
-- Service environment, dotenv loading, daemon PATH construction, executable precedence, or self-update install-root selection.
-- Session/transcript persistence, replay, deduplication, identity, recovery, or delivery semantics.
-- Availability-policy changes to watchdog duration, retry/fallback policy, slot occupancy, forced termination, or duplicate execution behavior.
-- Features, new knobs, new integrations, broad refactors, owner-boundary moves, or changes needing a product decision.
-- Test-only, coverage-only, generated-only, snapshot-only, or formatting-only work without a demonstrated maintainer or product outcome.
-- Dirty branches, unrelated churn, duplicate implementations, fixed-on-main work, or weaker duplicates of an existing canonical PR.
-- Bundled multi-topic PRs that cross independent lifecycle, channel, or owner paths.
-- Work whose real proof requires unavailable credentials or an unbounded live environment.
-- Changes that expand during review into terminal sanitization, untrusted-input auditing, permission changes, or another security boundary.
-
-## Still Configurable
-
-These remain excluded until Patrick explicitly changes them:
-
-- Maintainer-authored work.
-- Security/auth/trust-boundary work.
-- Config, migration, compatibility, protocol, SDK, dependency, release, workflow, and infrastructure-policy changes.
-- Session/message-delivery semantics and availability policy.
-- New features, integrations, broad refactors, and product decisions.
-- Test-only or generated-only work.
-- Bundled-skill expansion and other optional core expansion better owned by plugins or ClawHub.
-- Large changes above roughly 500 production lines or 12 files.
-
-An operator-provided item may still appear as an exception candidate. Its card must name every policy conflict, and approval must explicitly cover those conflicts before substantive qualification starts.
-
-## Qualification Gate
-
-Before qualification, state:
-
-- Who benefits and what becomes correct, clearer, or usable.
-- The owning path and concrete outcome.
-- Failing-before behavior, source/dependency contract, visual evidence, or docs mismatch.
-- Why the proposed change is the best owner-boundary fix.
-- The proportional proof required for this kind of change.
-
-Reject vague or speculative value claims. ClawSweeper rank is a useful signal, never an override.
-
-## Preferred Shape
-
-Prefer:
-
-- One clear owner path.
-- A focused regression test, deterministic behavior proof, visual proof, or source-backed docs validation.
-- Current-main reproducibility or direct contract evidence.
-- A canonical fix that replaces faulty behavior instead of adding a parallel path.
-- An editable contributor branch or a clean credited replacement path.
-
-Large production changes above 500 lines or more than 12 files require explicit operator selection after review.
-
-## Readiness Signals
-
-Rank higher with:
-
-1. ClawSweeper diamond or platinum.
-2. `proof: sufficient`.
-3. `ready for maintainer look`.
-4. Live mergeability and relevant green checks.
-5. A focused changed-file surface.
-
-Downgrade or reject `needs proof`, `waiting on author`, dirty/conflicting or stale heads, exact hard-risk labels, missing context, unexplained generated changes, or repeated proof-refresh commits. Failed or pending CI remains visible as a proposal warning; exact-head green proof is mandatory before landing.
-
-GitHub `UNSTABLE` is a downgrade rather than an automatic rejection when the latest hydrated non-routine checks have no failure or pending state. Landing still requires exact-head green proof.
-
-## Vision Wash
-
-Prefer fixes and improvements that advance OpenClaw's operator experience, stability, setup, first-run reliability, provider/channel correctness, UI usability, documentation correctness, and performance.
-
-Reject optional core expansion, bundled-skill expansion, duplicate MCP/agent infrastructure, wrapper channels, commercial integrations, heavy orchestration, or work better owned by a plugin or ClawHub unless Patrick explicitly expands the batch.
-
-## Batch Rule
-
-`20` means 20 plausible proposal cards for operator approval, not 20 sampled PRs and not 20 pre-reviewed patches. Continue scanning newer PRs and then the older backlog until 20 pass proposal screening or the bounded search is exhausted. Do not pad.
+Repository technical requirements and explicit task/mode holds still apply.
+Metadata ranking is a screening aid; it cannot grant approval or establish
+review readiness. Without a supplied policy, keep discovery read-only and ask
+for the missing selection boundary before admitting execution candidates.

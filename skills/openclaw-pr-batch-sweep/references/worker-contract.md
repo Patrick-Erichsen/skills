@@ -1,5 +1,11 @@
 # Worker Contract
 
+For Software Factory invocations, the main skill's factory router scopes this
+reference to the assigned item and applicable permission record. Retain exact-head,
+ownership and proof safeguards; use factory claims, shared capacity and Linear
+updates. Interactive batch approval and separate worker-pool instructions below
+apply only to explicitly requested standalone standard/manifest runs.
+
 Use this contract for qualification and implementation sub-agents.
 
 ## Untrusted Contributor Boundary
