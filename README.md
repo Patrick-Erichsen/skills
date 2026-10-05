@@ -7,7 +7,6 @@ work.
 
 ### Agent
 
-- [loop-creator](skills/loop-creator) - Native OpenClaw automations with persistent dashboards, retained run evidence, and explicit action boundaries.
 
 - [`codex-handoff`](skills/codex-handoff): Continue one durable task in a verified, titled, pinned Codex thread.
 - [`clawhub-review-sweep`](skills/clawhub-review-sweep): Review every open ClawHub issue and PR in a private ledger, autoland qualified fixes, and route product or policy decisions for review.
