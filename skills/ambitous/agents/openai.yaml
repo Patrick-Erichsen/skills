@@ -1,0 +1,5 @@
+interface:
+  display_name: "Ambitous"
+  short_description: "An ambition check before substantial planning"
+policy:
+  allow_implicit_invocation: true
