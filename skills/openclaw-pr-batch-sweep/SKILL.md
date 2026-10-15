@@ -22,7 +22,7 @@ When invoked by Software Factory, read its private `loops/openclaw.md` definitio
   Do not enter the interactive candidate-approval or execution steps. No repair,
   review dispatch, public comment, push, merge or deployment occurs in discovery.
 - **factory-item:** process only the assigned issue/PR under its factory owner,
-  original source-run authority and capacity reservation. Use this skill's
+  original source-run authority. Use this skill's
   qualification/proof and repository mechanics without opening a second batch or
   worker pool. An applicable recorded standing signoff can supply the scoped
   execution authority; explicit human holds and repository gates remain. Stop
@@ -142,7 +142,7 @@ Choose the mode before candidate work:
 4. Qualify only approved exact heads.
    - Refresh live state before starting. If the live head differs from the approved SHA before this task owns the lane, set the old entry to `superseded`, create a new proposal, and return it to the operator.
    - The approved SHA is the execution root. Coordinator-reviewed, task-owned repair commits that descend from that root remain inside the approval and do not require another operator round-trip. Record every resulting execution head. Any contributor, bot, or other external head change invalidates the lane and requires renewed approval.
-   - Use two retained qualification workers by default, normally with a serial queue of 3-5 PRs per worker. Do not exceed two unless the operator explicitly asks for more concurrency.
+   - Assign independent approved PRs to retained qualification workers according to the work and available execution tools.
    - Reassign the retained workers as they finish instead of spawning replacement workers for each PR.
    - Give each PR to exactly one qualification agent.
    - Agents load root and scoped `AGENTS.md` from trusted `origin/main`, then inspect live state, full changed functions/modules, callers, callees, siblings, tests, issue context, and dependency contracts.
@@ -151,7 +151,7 @@ Choose the mode before candidate work:
    - Require the return schema in `references/worker-contract.md`.
 
 5. Promote only qualified, approved PRs into implementation lanes.
-   - Use one retained implementation worker for 1-3 independent approved PRs and two for 4 or more. Never exceed two active implementation workers.
+   - Assign independent qualified PRs to retained implementation workers without a fixed worker-count cap.
    - Reassign the retained worker as each PR finishes.
    - Use one isolated worktree per PR through `gwt` when installed or native `git worktree` otherwise. Never share a worktree between agents.
    - Prefer repairing the contributor PR when maintainers can edit it.
@@ -229,7 +229,6 @@ Choose the mode before candidate work:
 - `explicit_skips`: PR numbers or URLs the operator has excluded.
 - `provided_items`: operator-provided PR or issue URLs, proposed first.
 - `handled_refs`: merged, closed, rejected, ignored, delegated, or already-reviewed PRs.
-- `concurrency`: `2` retained qualification workers; `1` implementation worker for 1-3 independent approvals and `2` for 4 or more; maximum `2` implementation workers.
 - `source_mode`: `discovery`, `provided-items`, or `combined`; default `combined`.
 - `risk_overrides`: explicit operator-approved exceptions only.
 

@@ -2,7 +2,7 @@
 
 For Software Factory invocations, the main skill's factory router scopes this
 reference to the assigned item and applicable permission record. Retain exact-head,
-ownership and proof safeguards; use factory claims, shared capacity and Linear
+ownership and proof safeguards; use factory claims and Linear
 updates. Interactive batch approval and separate worker-pool instructions below
 apply only to explicitly requested standalone standard/manifest runs.
 
@@ -100,8 +100,7 @@ cleanup requirements:
 ## Coordinator Rules
 
 - Keep at most one worker per PR and one PR per worktree.
-- Use two retained qualification workers. Use one retained implementation worker for 1-3 independent approvals and two for 4 or more. Reassign them as work finishes instead of spawning replacements.
-- Do not exceed two qualification workers unless the operator explicitly raises concurrency. Never exceed two active implementation workers.
+- Reassign retained qualification and implementation workers as work finishes. Independent approved work has no fixed worker-count cap.
 - Run discovery and hydration shell calls serially. Traverse REST collections one page at a time with `per_page=25`; do not parallelize `gitcrawl`, `ghx`, or per-PR hydration calls.
 - On `EMFILE`, `Too many open files`, or equivalent process-launch failure, stop spawning workers and parallel shells immediately. Let retained lanes finish, then continue with one coordinator shell call at a time.
 - Keep qualification read-only.

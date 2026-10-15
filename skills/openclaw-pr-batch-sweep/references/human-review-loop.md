@@ -49,8 +49,7 @@ external work. If the branch is not editable, return a patch and blocker rather
 than silently replacing or closing the contributor's PR. Task-owned new fixes may
 be published under the loop's separate implementation authority.
 
-Use the existing retained-worker model and shared host/CI capacity. Acquire a
-shared capacity lease before each expensive worker, not two workers per loop.
+Reuse retained workers for independent approved work.
 Read `ci-limits` before queue/runner/CI actions; do not change CI settings to make
 the batch faster. All children use unlimited run timeout; native waits bound one
 observation, never the total worker run. Follow execution-control receipts and

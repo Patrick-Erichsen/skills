@@ -15,7 +15,7 @@ revisions. Do not import OpenClaw's commands or pretend its tests validate ClawH
 Use the ClawHub repository's actual checks and shared CI/rate policy. Check
 ownership through live assignees, explicit claims, unresolved review discussions,
 active tasks and ledgers. An old maintainer comment alone does not exclude a PR;
-active or uncertain ownership does. Respect shared capacity across all loops.
+active or uncertain ownership does.
 
 Focused repairs to eligible small, easy-to-review PRs are authorized before
 signoff, using isolated worktrees and an editable contributor branch with verified

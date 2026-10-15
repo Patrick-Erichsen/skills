@@ -21,7 +21,7 @@ Create a mode-specific run manifest and per-item coordinator checkpoints in the 
 
 Freeze each source PR or issue evidence root before substantive work. For a source PR, record its exact head SHA. An external head change invalidates the lane; refresh, rescreen, and start a new checkpoint from the new head. Task-owned repair commits must descend from the frozen reviewed reconstruction, and every resulting head and tree hash must be recorded.
 
-Use retained capacity from the standard scheduler: at most two qualification workers and at most two implementation workers. One worker owns one item at a time, and one worktree belongs to one item. Run contributor-controlled code only in Testbox/Crabbox under the standard worker contract.
+One worker owns one item at a time, and one worktree belongs to one item. Run contributor-controlled code only in Testbox/Crabbox under the standard worker contract.
 
 ## Winnow, repair, and prove
 
