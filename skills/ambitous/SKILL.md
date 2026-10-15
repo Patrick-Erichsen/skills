@@ -1,15 +1,15 @@
 ---
 name: ambitous
-description: Open substantial planning work with an ambition check using altitude, depth, and range. Use at the start of a sizable feature, project, redesign, investigation, or strategy, including when planning is implicit in a build request. Skip small bugfixes, routine edits, and execution of an already settled plan. Also use when explicitly invoked as /ambitous or $ambitous.
+description: Open higher-level product, project, or strategy planning with an ambition check using altitude, depth, and range. Use when deciding the overall goal or direction, or when explicitly invoked as /ambitous or $ambitous. Skip scoped implementation issues, bugfixes, routine edits, and execution of an existing plan, regardless of implementation size.
 ---
 
 # Ambition check
 
-Help the user reconsider what is possible before settling the plan. Keep this a brief opening conversation, then continue the normal planning workflow.
+Help the user reconsider what is possible while the overall goal or direction is still open. Keep this a brief opening conversation, then continue the normal planning workflow. A defined implementation issue already has its direction; technical planning within that issue does not trigger this skill.
 
 ## Open the conversation
 
-At the outset of a substantial task, before detailed planning or decomposition:
+At the outset of higher-level planning, before detailed planning or decomposition:
 
 1. Share this link: [Felix Rieseberg — How to be more ambitious](https://felixrieseberg.com/how-to-be-more-ambitious-a-tutorial-for-humans-with-models/).
 2. Remind the user of all three lenses in plain language:
