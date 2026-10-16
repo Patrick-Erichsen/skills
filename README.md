@@ -15,7 +15,6 @@ work.
 
 ### Planning
 
-- [`ambitous`](skills/ambitous): Begin substantial planning with altitude, depth, and range, then reflect on how to be more ambitious.
 - [`grill-with-progress`](skills/grill-with-progress): Run a tracked grill-with-docs session with an anticipated question checklist and visible progress.
 
 ### Utils
