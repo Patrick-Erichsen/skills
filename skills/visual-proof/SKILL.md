@@ -1,6 +1,6 @@
 ---
 name: visual-proof
-description: Capture PR-ready visual proof for user-visible UI changes, including baseline/candidate comparisons, representative content states, responsive viewports, screenshots, and interaction video.
+description: Capture PR-ready visual proof for user-visible UI changes, including baseline/candidate comparisons, representative content states, responsive viewports, annotated screenshots, and interaction video.
 ---
 
 # Visual Proof
@@ -40,6 +40,24 @@ The matrix is complete when every required state has candidate coverage at every
 - Frame the changed surface with enough surrounding context to judge layout. Sanitize secrets and personal data without hiding the behavior under review.
 - Keep working captures outside committed source unless the repository explicitly owns visual fixtures.
 
+## Annotate the Claim
+
+Use annotations when they make the changed behavior easier to verify. Choose the mark from the assertion:
+
+| Assertion | Annotation |
+| --- | --- |
+| This control or result changed | A short labeled arrow or outline around the target. |
+| These edges or centers align | A shared reference line and the measured offset from each target to it. |
+| This gap or size changed | Dimension brackets between measured edges, labeled with the distance. |
+| This sequence caused the result | Numbered callouts or timed arrows at the relevant action and result. |
+
+- Measure target bounds in the captured state. Derive lines, bracket endpoints, and numeric labels from those bounds; identify the units, such as CSS pixels. If only image measurements are available, label them as image pixels and preserve the capture scale.
+- For before/after alignment or spacing proof, use the same reference element or axis, viewport, crop, and scale. Measure each state independently; keep the reference rule constant so the guides reveal the actual difference.
+- Place labels in free space and arrowheads beside the target. Keep text, edges, focus rings, and other evidence unobscured. Use a contrasting stroke or halo that remains legible at the size the PR will display.
+- Preserve the raw screenshot or recording and the measurements/cues alongside each annotated derivative. Annotations explain captured evidence; claimed measurements must agree with the raw artifact.
+
+Use the repository's annotation renderer when available so screenshots and video share geometry and styling. In OpenClaw, read `.agents/skills/proof-video/SKILL.md` and use its helpers; keep schema and command details in that repository skill.
+
 ## Edit Interaction Recordings
 
 Use three beats: **context → wait → result**. Establish the page and initiating action at normal speed, compress idle time, then hold the changed behavior long enough to inspect.
@@ -47,15 +65,18 @@ Use three beats: **context → wait → result**. Establish the page and initiat
 - Accelerate only idle waiting. Start with 4–8× when useful and show the multiplier throughout that interval, such as “Waiting for the response (6× speed).” Restore 1× before meaningful actions, transitions, or results. Keep latency measurements at real speed.
 - Use a short, smoothly eased closeup on the actual changed element. Start around 1.5–2× with a 0.4–0.6-second ease; frame its label and nearby result as well as the detail. Measure the target in the captured viewport after layout settles, and reserve room for captions.
 - Narrate visible behavior in one or two short caption lines. Align each caption with the action or result it describes, and hold the final evidence at normal speed for several seconds. Expand collapsed details through real UI controls when needed to make the result inspectable.
+- Time annotations on the raw recording's clock and transform target-attached marks with the footage during zooms and crops. Show a measured guide only while the measured layout is stable. Split the cue and remeasure after scrolling, resizing, or layout movement; recapture when the saved bounds no longer describe the footage.
 - Preserve the untouched raw recording, capture script, and timing cues alongside the edited output. Edits may shorten waiting and direct attention; they must preserve the real action/result sequence.
 
-Prefer the repository's existing recording and rendering helpers. If it supplies a `proof-video` skill, read it before authoring cues; use its supported zoom, speed, and caption operations instead of building a parallel editor. For a helper that uses raw-video timestamps, keep all cues on that clock and let the renderer remap them after speed changes. Burn captions into the published video when the destination does not display subtitle tracks.
+Prefer the repository's existing recording and rendering helpers. If it supplies a `proof-video` skill, read it before authoring cues; use its supported operations instead of building a parallel editor. Let the renderer remap raw-video timestamps after speed changes. Burn captions into the published video when the destination does not display subtitle tracks.
 
 ## Inspect Every Capture
 
 Open every screenshot and watch every video. Confirm that the intended state, viewport, changed behavior, and relevant surrounding layout are visible. Re-capture clipped, stale, blank, misleading, or incorrectly seeded evidence.
 
 For edited video, inspect the finalized output across its full timeline, then inspect full-size frames at speed boundaries, zoom transitions, caption changes, and the decisive result. Check that captions match the visible frame, the closeup keeps the relevant evidence readable and unobscured, and playback has returned to 1× for the result. Compare actual duration and frame rate with the intended edit; recording clocks and speed remapping can shift cues even when the script succeeds.
+
+Inspect annotated screenshots and decisive video frames at full size and at their expected PR display size. Verify arrow targets, guide alignment, measured labels, and visibility against the raw capture, including during zoom transitions. Correct misplaced or unreadable marks before publishing.
 
 Capture is not proof until this inspection passes.
 
