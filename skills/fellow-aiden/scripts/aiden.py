@@ -296,7 +296,7 @@ def main() -> None:
         "POST",
         f"/devices/{quote(device_id, safe='')}/profiles",
         token=token,
-        payload=candidate,
+        payload={key: value for key, value in candidate.items() if value is not None},
     )
     if not isinstance(result, dict) or not result.get("id"):
         raise AidenError(
