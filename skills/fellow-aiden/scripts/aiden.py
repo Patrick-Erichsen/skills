@@ -16,7 +16,6 @@ from urllib.request import Request, urlopen
 
 BASE_URL = "https://l8qtmnc692.execute-api.us-west-2.amazonaws.com/v2"
 USER_AGENT = "Fellow/5 CFNetwork/1568.300.101 Darwin/24.2.0"
-MAX_PROFILES = 14
 PROFILE_FIELDS = (
     "profileType",
     "title",
@@ -65,6 +64,16 @@ def request(
             raise AidenError(
                 f"Fellow rejected the account login (HTTP {exc.code})"
             ) from None
+        if method == "POST" and path.endswith("/profiles"):
+            try:
+                body = json.loads(exc.read(2048))
+                message = body.get("message") if isinstance(body, dict) else None
+            except (ValueError, OSError):
+                message = None
+            if isinstance(message, str) and message:
+                raise AidenError(
+                    f"Fellow rejected the profile (HTTP {exc.code}): {message[:300]}"
+                ) from None
         raise AidenError(
             f"Fellow returned HTTP {exc.code} for {method} {path}"
         ) from None
@@ -166,8 +175,7 @@ def validate_profile(profile: object) -> dict:
     number("bloomRatio", 1, 3, 0.5)
     integer("bloomDuration", 1, 120)
     number("bloomTemperature", 50, 99, 0.5)
-    if profile["overallTemperature"] is not None:
-        number("overallTemperature", 50, 99, 0.5)
+    number("overallTemperature", 50, 99, 0.5)
     for prefix in ("ss", "batch"):
         enabled = f"{prefix}PulsesEnabled"
         count = f"{prefix}PulsesNumber"
@@ -178,11 +186,7 @@ def validate_profile(profile: object) -> dict:
         if type(profile[enabled]) is not bool:
             raise AidenError(f"{enabled} must be a boolean")
         integer(count, 1, 10)
-        if profile[interval] is None:
-            if profile[count] != 1:
-                raise AidenError(f"{interval} may be null only for one pulse")
-        else:
-            integer(interval, 5, 60)
+        integer(interval, 5, 60)
         values = profile[temperatures]
         if not isinstance(values, list):
             raise AidenError(f"{temperatures} must be an array")
@@ -287,16 +291,11 @@ def main() -> None:
         raise AidenError(
             f"A profile with this title already exists ({duplicates[0].get('id')})"
         )
-    if len(current) >= MAX_PROFILES:
-        raise AidenError(
-            f"Aiden already has {len(current)} profiles (maximum {MAX_PROFILES}). "
-            "Choose a custom profile to back up and replace before creating another."
-        )
     result = request(
         "POST",
         f"/devices/{quote(device_id, safe='')}/profiles",
         token=token,
-        payload={key: value for key, value in candidate.items() if value is not None},
+        payload=candidate,
     )
     if not isinstance(result, dict) or not result.get("id"):
         raise AidenError(
