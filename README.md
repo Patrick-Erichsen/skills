@@ -20,6 +20,7 @@ work.
 ### Utils
 
 - [`bro`](skills/bro): Restate the last message in plain human language, with no jargon.
+- [`daily-work-brief`](skills/daily-work-brief): Turn verified merged PRs and agent sessions into a short, bulleted daily brief with an evidence archive.
 - [`html`](skills/html): Choose and create single-file HTML artifacts for visual explanations, plans, reviews, and lightweight tools.
 - [`visual-proof`](skills/visual-proof): Capture inspected before/after UI evidence across representative states and responsive viewports.
 
