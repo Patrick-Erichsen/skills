@@ -4,7 +4,7 @@ description: Review and durably track every open ClawHub issue and pull request,
 license: MIT
 metadata:
   source: "https://github.com/Patrick-Erichsen/skills/tree/main/skills/clawhub-review-sweep"
-  version: "0.2.0"
+  version: "0.2.1"
   spec: agentskills-v1
 ---
 
@@ -41,7 +41,7 @@ Read before use:
 - [references/review-record.md](references/review-record.md) for the durable schema and freshness rules.
 - [references/operator-approval.md](references/operator-approval.md) for the autoland and human-decision gates.
 - [references/admin-capabilities.md](references/admin-capabilities.md) before classifying admin requests.
-- [references/clawscan-policy.md](references/clawscan-policy.md) before classifying any scanner-related item.
+- [references/clawscan-policy.md](references/clawscan-policy.md) for retained scanner-policy provenance, then [references/scanner-routing.md](references/scanner-routing.md) for current false-positive/judgment routing, ClawScan repository checks and authorized closeout.
 
 Compose the repository-local `clawhub-pr-maintainer` and `clawhub-moderation` skills. Use `autoreview` when a PR advances to repair or landing. Admin mutations must use `clawhub-admin`; never call Convex mutations directly.
 
@@ -88,7 +88,7 @@ The state repository contains:
 
 4. Classify special handling.
    - For a request that exactly maps to an existing `clawhub-admin` command, record the command family, exact dry-run/read command when available, mutation command template, required evidence, risk, and an `approve`, `deny`, or `needs-judgment` recommendation. Do not execute it.
-   - For ClawScan finding-remediation requests, apply `references/clawscan-policy.md`. Propose the standard closure comment only for manual clear/override/reclassification requests.
+   - For scanner false-positive/judgment requests, apply `references/scanner-routing.md`, including ClawScan repository checks in this existing sweep. Under applicable operator triage authority, reply courteously with the upstream route and version-bound evidence/fix guidance, then close the ClawHub judgment request. Without that authority, propose the reply/close; review-only and discovery remain read-only.
    - Do not treat a stuck scan, stale result, wrong artifact/version, publish failure, ban, abuse report, or integration defect as a manual-remediation request.
 
 5. Validate and present the private review surface.
