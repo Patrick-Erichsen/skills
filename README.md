@@ -26,6 +26,7 @@ work.
 
 ### Tools
 
+- [`ocm-operator`](skills/ocm-operator): Run isolated OpenClaw test gateways with model-only configuration by default, benchmark startup, and opt into full-state tests.
 - [`agent-revision-history`](skills/agent-revision-history): Generate a JSON edit history for a Markdown or MDX document from an agent session transcript. I use this in my personal blog to render my edit history to show to what extent I polished an originally AI generated piece of content. Includes optional Shadcn style UI component to render the revisions.
 - [`fellow-aiden`](skills/fellow-aiden): Connect a Fellow Aiden and create brew profiles from coffee bag photos.
 - [`notion-marketplace`](skills/notion-marketplace): Find and install Notion Marketplace templates with free-first discovery, workspace selection, and API verification.
