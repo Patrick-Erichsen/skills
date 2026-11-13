@@ -86,7 +86,10 @@ supervisor isolation check even when the target environment is disposable.
    automations must stay out of the test environment.
 
 7. When asked for latest-main testing or startup timing, follow
-   [references/startup-benchmark.md](references/startup-benchmark.md).
+   [references/startup-benchmark.md](references/startup-benchmark.md) before
+   starting any build. Reuse verified exact-head artifacts or use the current
+   runtime-only build profile; do not default a development preview to a full
+   package/declaration build. Inspect host load and disk capacity up front.
 
 ## Decision Guide
 
